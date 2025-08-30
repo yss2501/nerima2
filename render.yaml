@@ -1,0 +1,26 @@
+services:
+  # Backend API Service
+  - type: web
+    name: nerima-wonderland-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GOOGLE_MAPS_API_KEY
+        value: AIzaSyAf_qxaXszMB2YmNUYrSlocBrf53b7Al6U
+      - key: SUPABASE_URL
+        value: https://ybsssvczfmbwplzgqxsh.supabase.co
+      - key: SUPABASE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlic3NzdmN6Zm1id3BsemdxeHNoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjUyNzU2OSwiZXhwIjoyMDcyMTAzNTY5fQ.Sd4iIlhVlwQeIe4Kv3t06lcwfotmXP7Ba-mMVc31Hpo
+
+  # Frontend Service
+  - type: web
+    name: nerima-wonderland-frontend
+    env: node
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://nerima-wonderland-backend.onrender.com
