@@ -331,7 +331,8 @@ async def calculate_route_info(start_lat: float, start_lng: float, spots: list, 
 
 async def get_osrm_route(coordinates: list, profile: str = "foot"):
     """OSRM APIでルート情報を取得"""
-    import requests
+    import aiohttp
+    import asyncio
     
     # OSRM Demo Server（本番環境では独自サーバーを推奨）
     base_url = f"http://router.project-osrm.org/route/v1/{profile}"
@@ -347,15 +348,18 @@ async def get_osrm_route(coordinates: list, profile: str = "foot"):
     logging.info(f"OSRM API Request: {url} with params: {params}")
     
     try:
-        response = requests.get(url, params=params, timeout=15)
-        if response.status_code == 200:
-            data = response.json()
-            logging.info(f"OSRM API Success: received {len(data.get('routes', []))} routes")
-            return data
-        else:
-            logging.error(f"OSRM API Error {response.status_code}: {response.text}")
-            return None
-    except requests.Timeout:
+        timeout = aiohttp.ClientTimeout(total=15)  # 15秒タイムアウト
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url, params=params) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    logging.info(f"OSRM API Success: received {len(data.get('routes', []))} routes")
+                    return data
+                else:
+                    error_text = await response.text()
+                    logging.error(f"OSRM API Error {response.status}: {error_text}")
+                    return None
+    except asyncio.TimeoutError:
         logging.error("OSRM API timeout")
         return None
     except Exception as e:
@@ -470,7 +474,7 @@ async def calculate_route_info_fallback(start_lat: float, start_lng: float, spot
     
     # Google Maps APIキーを環境変数から取得
     import os
-    import requests
+    import aiohttp
     from dotenv import load_dotenv
     
     # .envファイルを読み込み
@@ -500,39 +504,40 @@ async def calculate_route_info_fallback(start_lat: float, start_lng: float, spot
                 
                 logging.info(f"Calling Google Maps API: {url}")
                 
-                response = requests.get(url, timeout=15)
-                logging.info(f"Google Maps API response status: {response.status_code}")
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    logging.info(f"Google Maps API response: {data}")
-                    
-                    if data['status'] == 'OK' and data['routes']:
-                        # 実際の道路ルートを取得
-                        route = data['routes'][0]
-                        leg = route['legs'][0]
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        logging.info(f"Google Maps API response status: {response.status}")
                         
-                        # 詳細なルートポイントを取得
-                        for step in leg['steps']:
-                            # 各ステップの開始点と終了点を追加
-                            detailed_route.append({
-                                "lat": step['start_location']['lat'],
-                                "lng": step['start_location']['lng']
-                            })
-                        
-                        # 最後のステップの終了点を追加
-                        detailed_route.append({
-                            "lat": leg['steps'][-1]['end_location']['lat'],
-                            "lng": leg['steps'][-1]['end_location']['lng']
-                        })
-                        
-                        logging.info(f"Google Maps route generated with {len(leg['steps'])} steps")
-                    else:
-                        # Google Maps APIが失敗した場合、フォールバック
-                        logging.warning(f"Google Maps API failed: {data.get('status', 'Unknown error')}")
-                        raise Exception("Google Maps API failed")
-                else:
-                    raise Exception(f"Google Maps API request failed: {response.status_code}")
+                        if response.status == 200:
+                            data = await response.json()
+                            logging.info(f"Google Maps API response: {data}")
+                            
+                            if data['status'] == 'OK' and data['routes']:
+                                # 実際の道路ルートを取得
+                                route = data['routes'][0]
+                                leg = route['legs'][0]
+                                
+                                # 詳細なルートポイントを取得
+                                for step in leg['steps']:
+                                    # 各ステップの開始点と終了点を追加
+                                    detailed_route.append({
+                                        "lat": step['start_location']['lat'],
+                                        "lng": step['start_location']['lng']
+                                    })
+                                
+                                # 最後のステップの終了点を追加
+                                detailed_route.append({
+                                    "lat": leg['steps'][-1]['end_location']['lat'],
+                                    "lng": leg['steps'][-1]['end_location']['lng']
+                                })
+                                
+                                logging.info(f"Google Maps route generated with {len(leg['steps'])} steps")
+                            else:
+                                # Google Maps APIが失敗した場合、フォールバック
+                                logging.warning(f"Google Maps API failed: {data.get('status', 'Unknown error')}")
+                                raise Exception("Google Maps API failed")
+                        else:
+                            raise Exception(f"Google Maps API request failed: {response.status}")
                             
         except Exception as e:
             logging.warning(f"Google Maps API error: {e}, using fallback")
