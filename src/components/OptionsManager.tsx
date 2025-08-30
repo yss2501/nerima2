@@ -99,7 +99,7 @@ export default function OptionsManager() {
 
   const handleItemAdded = (newItem: OptionItem) => {
     setCategories(categories.map(cat => 
-      cat.id === newItem.category_id 
+      cat.name === newItem.category 
         ? { ...cat, items: [...cat.items, newItem] }
         : cat
     ));
@@ -108,7 +108,7 @@ export default function OptionsManager() {
 
   const handleItemUpdated = (updatedItem: OptionItem) => {
     setCategories(categories.map(cat => 
-      cat.id === updatedItem.category_id
+      cat.name === updatedItem.category
         ? { 
             ...cat, 
             items: cat.items.map(item => 
