@@ -18,7 +18,7 @@ export interface GeocodeResponse {
  * @returns 正規化された住所の配列
  */
 function normalizeJapaneseAddress(address: string): string[] {
-  const normalized = [];
+  const normalized: string[] = [];
   let baseAddress = address.trim();
 
   // 元の住所をそのまま追加
