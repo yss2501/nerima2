@@ -185,16 +185,16 @@ function calculateAddressRelevance(original: string, candidate: string): number 
   if (candidateLower.includes(originalLower)) score += 100;
 
   // 数字の一致をチェック
-  const originalNumbers = original.match(/\d+/g) || [];
-  const candidateNumbers = candidate.match(/\d+/g) || [];
+  const originalNumbers = (original.match(/\d+/g) || []) as string[];
+  const candidateNumbers = (candidate.match(/\d+/g) || []) as string[];
   
   originalNumbers.forEach(num => {
     if (candidateNumbers.includes(num)) score += 20;
   });
 
   // 漢字の一致をチェック
-  const originalKanji = original.match(/[一-龯]+/g) || [];
-  const candidateKanji = candidate.match(/[一-龯]+/g) || [];
+  const originalKanji = (original.match(/[一-龯]+/g) || []) as string[];
+  const candidateKanji = (candidate.match(/[一-龯]+/g) || []) as string[];
   
   originalKanji.forEach(kanji => {
     if (candidateKanji.some(ck => ck.includes(kanji))) score += 10;
