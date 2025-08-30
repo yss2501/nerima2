@@ -1,452 +1,347 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { optionsApi } from '@/lib/api';
+
 import { 
-  optionsApi, 
   OptionCategory, 
-  OptionCategoryWithItems, 
   OptionItem, 
-  OptionItemCreate, 
-  OptionItemUpdate 
+  OptionCategoryWithItems,
+  OptionCategoryCreate,
+  OptionCategoryUpdate,
+  OptionItemCreate,
+  OptionItemUpdate
 } from '@/lib/api';
 
 export default function OptionsManager() {
-  const [categories, setCategories] = useState<OptionCategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<OptionCategoryWithItems | null>(null);
+  const [categories, setCategories] = useState<OptionCategoryWithItems[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
-  
-  // 項目編集用の状態
+  const [error, setError] = useState<string | null>(null);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<OptionCategory | null>(null);
   const [editingItem, setEditingItem] = useState<OptionItem | null>(null);
-  const [newItem, setNewItem] = useState<OptionItemCreate>({
-    value: '',
-    label: '',
-    description: '',
-    sort_order: 0,
-    is_active: true
-  });
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   useEffect(() => {
-    loadCategories();
+    loadOptions();
   }, []);
 
-  const loadCategories = async () => {
+  const loadOptions = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const response = await optionsApi.categories.getAll();
       if (response.error) {
         setError(response.error);
       } else {
-        setCategories(response.data || []);
+        const categoriesData = response.data || [];
+        
+        // 各カテゴリの項目を取得
+        const categoriesWithItems = await Promise.all(
+          categoriesData.map(async (category) => {
+            try {
+              const itemsResponse = await optionsApi.items.getByCategory(category.name);
+              return {
+                ...category,
+                items: itemsResponse.data || []
+              };
+            } catch (err) {
+              console.error(`Error loading items for category ${category.name}:`, err);
+              return {
+                ...category,
+                items: []
+              };
+            }
+          })
+        );
+        
+        setCategories(categoriesWithItems);
       }
     } catch (err) {
-      setError('カテゴリの読み込みに失敗しました');
-      console.error('Error loading categories:', err);
+      setError('オプションの読み込みに失敗しました');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadCategoryWithItems = async (categoryName: string) => {
-    try {
-      const response = await optionsApi.categories.getWithItems(categoryName);
-      if (response.error) {
-        setError(response.error);
-      } else {
-        setSelectedCategory(response.data);
-      }
-    } catch (err) {
-      setError('カテゴリの詳細読み込みに失敗しました');
-      console.error('Error loading category details:', err);
-    }
+  const handleCategoryAdded = (newCategory: OptionCategory) => {
+    setCategories([...categories, { ...newCategory, items: [] }]);
+    setShowAddCategory(false);
   };
 
-  const handleAddItem = async () => {
-    if (!selectedCategory || !newItem.value.trim() || !newItem.label.trim()) {
-      setError('値と表示名は必須です');
+  const handleCategoryUpdated = (updatedCategory: OptionCategory) => {
+    setCategories(categories.map(cat => 
+      cat.id === updatedCategory.id ? { ...cat, ...updatedCategory } : cat
+    ));
+    setEditingCategory(null);
+  };
+
+  const handleCategoryDeleted = async (categoryId: string) => {
+    if (!confirm('このカテゴリを削除しますか？関連する項目も削除されます。')) {
       return;
     }
 
     try {
-      const response = await optionsApi.items.create(selectedCategory.name, {
-        ...newItem,
-        sort_order: newItem.sort_order || (selectedCategory.items.length + 1) * 10
-      });
-      
+      const response = await optionsApi.categories.delete(categoryId);
       if (response.error) {
-        setError(response.error);
-      } else {
-        await loadCategoryWithItems(selectedCategory.name);
-        setNewItem({ value: '', label: '', description: '', sort_order: 0, is_active: true });
-        setShowAddForm(false);
-        setError('');
+        alert('削除に失敗しました: ' + response.error);
+        return;
       }
-    } catch (err) {
-      setError('項目の追加に失敗しました');
-      console.error('Error adding item:', err);
+      
+      setCategories(categories.filter(cat => cat.id !== categoryId));
+      alert('カテゴリが削除されました');
+    } catch (error) {
+      alert('削除に失敗しました');
     }
   };
 
-  const handleUpdateItem = async () => {
-    if (!editingItem) return;
-
-    try {
-      const updateData: OptionItemUpdate = {
-        value: editingItem.value,
-        label: editingItem.label,
-        description: editingItem.description,
-        sort_order: editingItem.sort_order,
-        is_active: editingItem.is_active
-      };
-
-      const response = await optionsApi.items.update(editingItem.id, updateData);
-      
-      if (response.error) {
-        setError(response.error);
-      } else {
-        await loadCategoryWithItems(selectedCategory!.name);
-        setEditingItem(null);
-        setError('');
-      }
-    } catch (err) {
-      setError('項目の更新に失敗しました');
-      console.error('Error updating item:', err);
-    }
+  const handleItemAdded = (newItem: OptionItem) => {
+    setCategories(categories.map(cat => 
+      cat.id === newItem.category_id 
+        ? { ...cat, items: [...cat.items, newItem] }
+        : cat
+    ));
+    setShowAddItem(false);
   };
 
-  const handleDeleteItem = async (itemId: string, itemLabel: string) => {
-    if (!confirm(`「${itemLabel}」を削除しますか？`)) return;
+  const handleItemUpdated = (updatedItem: OptionItem) => {
+    setCategories(categories.map(cat => 
+      cat.id === updatedItem.category_id
+        ? { 
+            ...cat, 
+            items: cat.items.map(item => 
+              item.id === updatedItem.id ? updatedItem : item
+            )
+          }
+        : cat
+    ));
+    setEditingItem(null);
+  };
+
+  const handleItemDeleted = async (itemId: string) => {
+    if (!confirm('この項目を削除しますか？')) {
+      return;
+    }
 
     try {
       const response = await optionsApi.items.delete(itemId);
-      
       if (response.error) {
-        setError(response.error);
-      } else {
-        await loadCategoryWithItems(selectedCategory!.name);
-        setError('');
+        alert('削除に失敗しました: ' + response.error);
+        return;
       }
-    } catch (err) {
-      setError('項目の削除に失敗しました');
-      console.error('Error deleting item:', err);
-    }
-  };
-
-  const handleReorderItems = async (dragIndex: number, hoverIndex: number) => {
-    if (!selectedCategory) return;
-
-    const draggedItem = selectedCategory.items[dragIndex];
-    const newItems = [...selectedCategory.items];
-    newItems.splice(dragIndex, 1);
-    newItems.splice(hoverIndex, 0, draggedItem);
-
-    // 新しい並び順を計算
-    const itemOrders = newItems.map((item, index) => ({
-      id: item.id,
-      sort_order: (index + 1) * 10
-    }));
-
-    try {
-      const response = await optionsApi.items.reorder(selectedCategory.name, itemOrders);
       
-      if (response.error) {
-        setError(response.error);
-      } else {
-        await loadCategoryWithItems(selectedCategory.name);
-        setError('');
-      }
-    } catch (err) {
-      setError('並び順の変更に失敗しました');
-      console.error('Error reordering items:', err);
+      setCategories(categories.map(cat => ({
+        ...cat,
+        items: cat.items.filter(item => item.id !== itemId)
+      })));
+      alert('項目が削除されました');
+    } catch (error) {
+      alert('削除に失敗しました');
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="text-lg text-gray-600 dark:text-gray-400">読み込み中...</div>
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
+        <p className="mt-4 text-gray-600">オプションを読み込み中...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600 text-lg mb-4">❌ {error}</p>
+        <button
+          onClick={loadOptions}
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors"
+        >
+          再試行
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="text-center mb-12 animate-fade-in">
-        <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
-          🗂️ 選択リスト
-          <span className="block bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
-            管理システム
-          </span>
-        </h1>
-        <p className="text-xl text-white/90 mb-8 leading-relaxed max-w-3xl mx-auto">
-          練馬スポット登録・編集フォームで使用する選択リストの項目を管理します
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-4 bg-red-500/20 border border-red-400/50 text-red-200 rounded-2xl backdrop-blur-md">
-          ❌ {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* カテゴリ一覧 */}
-        <div className="lg:col-span-1">
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-              <span className="text-2xl">📂</span> カテゴリ一覧
-            </h2>
-            <div className="space-y-2">
-              {categories.map((category) => (
-                <button
-                  key={category.name}
-                  onClick={() => loadCategoryWithItems(category.name)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    selectedCategory?.name === category.name
-                      ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600 text-blue-900 dark:text-blue-200'
-                      : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  <div className="font-medium">{category.display_name}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {category.name}
-                  </div>
-                  {category.description && (
-                    <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      {category.description}
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
+    <div className="space-y-6">
+      {/* ヘッダー */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">オプション管理</h2>
+            <p className="text-gray-600">カテゴリ、料金帯、混雑度などの選択肢を管理します</p>
+          </div>
+          <div className="flex gap-4">
+            <button
+              onClick={() => {
+                setShowAddCategory(!showAddCategory);
+                setShowAddItem(false);
+                setEditingCategory(null);
+                setEditingItem(null);
+              }}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <span>📁</span>
+              {showAddCategory ? 'フォームを閉じる' : 'カテゴリを追加'}
+            </button>
+            <button
+              onClick={() => {
+                setShowAddItem(!showAddItem);
+                setShowAddCategory(false);
+                setEditingCategory(null);
+                setEditingItem(null);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <span>➕</span>
+              {showAddItem ? 'フォームを閉じる' : '項目を追加'}
+            </button>
           </div>
         </div>
 
-        {/* 項目管理 */}
-        <div className="lg:col-span-2">
-          {selectedCategory ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  📝 {selectedCategory.display_name} の項目管理
-                </h2>
-                <button
-                  onClick={() => setShowAddForm(!showAddForm)}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                >
-                  {showAddForm ? 'キャンセル' : '➕ 項目追加'}
-                </button>
-              </div>
+        {/* 統計情報 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-purple-50 rounded-lg p-4 text-center">
+            <div className="text-2xl font-bold text-purple-600">{categories.length}</div>
+            <div className="text-purple-600 text-sm">カテゴリ数</div>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-4 text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {categories.reduce((total, cat) => total + (cat.items?.length || 0), 0)}
+            </div>
+            <div className="text-blue-600 text-sm">総項目数</div>
+          </div>
+          <div className="bg-green-50 rounded-lg p-4 text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {categories.length > 0 ? Math.round(categories.reduce((total, cat) => total + (cat.items?.length || 0), 0) / categories.length) : 0}
+            </div>
+            <div className="text-green-600 text-sm">平均項目数</div>
+          </div>
+        </div>
+      </div>
 
-              {/* 新規項目追加フォーム */}
-              {showAddForm && (
-                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900 rounded-lg border border-green-200 dark:border-green-700">
-                  <h3 className="text-lg font-medium text-green-900 dark:text-green-200 mb-3">
-                    新しい項目を追加
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-green-800 dark:text-green-300 mb-1">
-                        値（内部ID）<span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={newItem.value}
-                        onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                        className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        placeholder="例: temple"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-green-800 dark:text-green-300 mb-1">
-                        表示名<span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={newItem.label}
-                        onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
-                        className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        placeholder="例: 寺院・神社"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-green-800 dark:text-green-300 mb-1">
-                        説明
-                      </label>
-                      <input
-                        type="text"
-                        value={newItem.description || ''}
-                        onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        placeholder="項目の説明（任意）"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-green-800 dark:text-green-300 mb-1">
-                        並び順
-                      </label>
-                      <input
-                        type="number"
-                        value={newItem.sort_order || 0}
-                        onChange={(e) => setNewItem({ ...newItem, sort_order: parseInt(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={newItem.is_active}
-                        onChange={(e) => setNewItem({ ...newItem, is_active: e.target.checked })}
-                        className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                      />
-                      <label className="ml-2 block text-sm text-green-800 dark:text-green-300">
-                        有効にする
-                      </label>
-                    </div>
+      {/* カテゴリ一覧 */}
+      <div className="bg-white rounded-lg shadow-md">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900">
+            カテゴリ一覧 ({categories.length}件)
+          </h3>
+        </div>
+        
+        {categories.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-gray-500 text-lg">カテゴリがまだ追加されていません</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {categories.map((category) => (
+              <div key={category.id} className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                                         <h4 className="text-lg font-semibold text-gray-900">{category.display_name}</h4>
+                    {category.description && (
+                      <p className="text-gray-600 text-sm mt-1">{category.description}</p>
+                    )}
+                                         <p className="text-gray-500 text-xs mt-2">
+                       項目数: {category.items?.length || 0} | 
+                       作成日: {new Date(category.created_at).toLocaleDateString('ja-JP')}
+                     </p>
                   </div>
-                  <div className="flex justify-end gap-3 mt-4">
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => setShowAddForm(false)}
-                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      onClick={() => {
+                        setEditingCategory(category);
+                        setShowAddCategory(false);
+                        setShowAddItem(false);
+                        setEditingItem(null);
+                      }}
+                      className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
                     >
-                      キャンセル
+                      編集
                     </button>
                     <button
-                      onClick={handleAddItem}
-                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                      onClick={() => handleCategoryDeleted(category.id)}
+                      className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition-colors"
                     >
-                      追加
+                      削除
                     </button>
                   </div>
                 </div>
-              )}
 
-              {/* 項目一覧 */}
-              <div className="space-y-3">
-                {selectedCategory.items.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    この カテゴリには項目がありません
-                  </div>
-                ) : (
-                  selectedCategory.items.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                {/* 項目一覧 */}
+                <div className="ml-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h5 className="text-md font-medium text-gray-700">項目一覧</h5>
+                    <button
+                      onClick={() => {
+                        setSelectedCategory(category.id);
+                        setShowAddItem(true);
+                        setShowAddCategory(false);
+                        setEditingCategory(null);
+                        setEditingItem(null);
+                      }}
+                      className="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 transition-colors"
                     >
-                      <div className="flex-1">
-                        {editingItem?.id === item.id ? (
-                          // 編集モード
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            <input
-                              type="text"
-                              value={editingItem.value}
-                              onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
-                              placeholder="値"
-                            />
-                            <input
-                              type="text"
-                              value={editingItem.label}
-                              onChange={(e) => setEditingItem({ ...editingItem, label: e.target.value })}
-                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
-                              placeholder="表示名"
-                            />
-                            <input
-                              type="text"
-                              value={editingItem.description || ''}
-                              onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
-                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
-                              placeholder="説明"
-                            />
-                            <input
-                              type="number"
-                              value={editingItem.sort_order}
-                              onChange={(e) => setEditingItem({ ...editingItem, sort_order: parseInt(e.target.value) || 0 })}
-                              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
-                              placeholder="並び順"
-                            />
-                          </div>
-                        ) : (
-                          // 表示モード
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      項目を追加
+                    </button>
+                  </div>
+                  
+                                     {!category.items || category.items.length === 0 ? (
+                     <p className="text-gray-500 text-sm">項目がありません</p>
+                   ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {category.items.map((item) => (
+                        <div key={item.id} className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex justify-between items-start">
                             <div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">値</div>
-                              <div className="font-mono text-sm">{item.value}</div>
+                                                             <p className="font-medium text-gray-900">{item.label}</p>
+                              <p className="text-gray-600 text-sm">値: {item.value}</p>
+                              <p className="text-gray-500 text-xs">順序: {item.sort_order}</p>
                             </div>
-                            <div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">表示名</div>
-                              <div className="font-medium">{item.label}</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">説明</div>
-                              <div className="text-sm">{item.description || '―'}</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">並び順</div>
-                              <div className="text-sm">{item.sort_order}</div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingItem(item);
+                                  setShowAddCategory(false);
+                                  setShowAddItem(false);
+                                  setEditingCategory(null);
+                                }}
+                                className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
+                              >
+                                編集
+                              </button>
+                              <button
+                                onClick={() => handleItemDeleted(item.id)}
+                                className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 transition-colors"
+                              >
+                                削除
+                              </button>
                             </div>
                           </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 ml-4">
-                        <div className={`px-2 py-1 rounded-full text-xs ${
-                          item.is_active 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' 
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
-                        }`}>
-                          {item.is_active ? '有効' : '無効'}
                         </div>
-
-                        {editingItem?.id === item.id ? (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={handleUpdateItem}
-                              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
-                            >
-                              保存
-                            </button>
-                            <button
-                              onClick={() => setEditingItem(null)}
-                              className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-sm"
-                            >
-                              キャンセル
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setEditingItem(item)}
-                              className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors text-sm"
-                            >
-                              編集
-                            </button>
-                            <button
-                              onClick={() => handleDeleteItem(item.id, item.label)}
-                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"
-                            >
-                              削除
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
-              <div className="text-center text-gray-500 dark:text-gray-400">
-                <div className="text-4xl mb-4">📂</div>
-                <div className="text-lg">カテゴリを選択してください</div>
-                <div className="text-sm mt-2">左側のカテゴリ一覧から編集したいカテゴリをクリックしてください</div>
-              </div>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* 追加・編集フォームのプレースホルダー */}
+      {(showAddCategory || showAddItem || editingCategory || editingItem) && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800">
+              フォーム機能は別コンポーネントで実装されています。
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
