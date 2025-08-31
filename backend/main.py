@@ -497,106 +497,85 @@ async def calculate_route_info_fallback(start_lat: float, start_lng: float, spot
     total_visit_time = sum(spot.visit_duration for spot in spots)
     total_time = total_travel_time + total_visit_time
     
-    # 実際の道路に沿ったルートを生成（Google Maps Directions API使用）
+    # 実際の道路に沿ったルートを生成（ORS API使用）
     detailed_route = []
     
-    # Google Maps APIキーを環境変数から取得
-    import os
-    import aiohttp
-    from dotenv import load_dotenv
-    
-    # .envファイルを読み込み
-    load_dotenv()
-    google_maps_api_key = os.getenv('GOOGLE_MAPS_API_KEY')
-    
-    logging.info(f"Google Maps API key found: {google_maps_api_key is not None}")
-    if google_maps_api_key:
-        logging.info(f"API key starts with: {google_maps_api_key[:10]}...")
-    
-    if google_maps_api_key:
-        try:
-            # Google Maps Directions APIを使用
-            for i in range(len(route_points) - 1):
-                origin = f"{route_points[i]['lat']},{route_points[i]['lng']}"
-                destination = f"{route_points[i+1]['lat']},{route_points[i+1]['lng']}"
+    # ORS APIを使用してルートを生成
+    try:
+        # ルートポイントをORS用の形式に変換
+        coordinates = []
+        for point in route_points:
+            coordinates.append([point['lng'], point['lat']])  # ORSは [lng, lat] 順
+        
+        # 移動手段に応じたプロファイルを設定
+        profile_map = {
+            'walking': 'foot-walking',
+            'cycling': 'cycling-regular', 
+            'driving': 'driving-car'
+        }
+        profile = profile_map.get(transport_mode, 'foot-walking')
+        
+        # ORS APIを呼び出し
+        ors_url = f"https://api.openrouteservice.org/v2/directions/{profile}/geojson"
+        headers = {
+            "Authorization": os.getenv("ORS_API_KEY"),
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "coordinates": coordinates,
+            "instructions": False
+        }
+        
+        logging.info(f"Calling ORS API with profile: {profile}")
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(ors_url, headers=headers, json=payload) as response:
+                logging.info(f"ORS API response status: {response.status}")
                 
-                # 移動手段に応じたモードを設定
-                mode_map = {
-                    'walking': 'walking',
-                    'cycling': 'bicycling', 
-                    'driving': 'driving'
-                }
-                mode = mode_map.get(transport_mode, 'walking')
-                
-                url = f"https://maps.googleapis.com/maps/api/directions/json?origin={origin}&destination={destination}&mode={mode}&key={google_maps_api_key}"
-                
-                logging.info(f"Calling Google Maps API: {url}")
-                
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as response:
-                        logging.info(f"Google Maps API response status: {response.status}")
-                        
-                        if response.status == 200:
-                            data = await response.json()
-                            logging.info(f"Google Maps API response: {data}")
-                            
-                            if data['status'] == 'OK' and data['routes']:
-                                # 実際の道路ルートを取得
-                                route = data['routes'][0]
-                                leg = route['legs'][0]
-                                
-                                # 詳細なルートポイントを取得
-                                for step in leg['steps']:
-                                    # 各ステップの開始点と終了点を追加
-                                    detailed_route.append({
-                                        "lat": step['start_location']['lat'],
-                                        "lng": step['start_location']['lng']
-                                    })
-                                
-                                # 最後のステップの終了点を追加
+                if response.status == 200:
+                    data = await response.json()
+                    logging.info(f"ORS API response received")
+                    
+                    if data.get('features') and data['features'][0].get('geometry'):
+                        # GeoJSONから座標を抽出
+                        geometry = data['features'][0]['geometry']
+                        if geometry['type'] == 'LineString':
+                            for coord in geometry['coordinates']:
                                 detailed_route.append({
-                                    "lat": leg['steps'][-1]['end_location']['lat'],
-                                    "lng": leg['steps'][-1]['end_location']['lng']
+                                    "lat": coord[1],  # [lng, lat] から [lat, lng] に変換
+                                    "lng": coord[0]
                                 })
-                                
-                                logging.info(f"Google Maps route generated with {len(leg['steps'])} steps")
-                            else:
-                                # Google Maps APIが失敗した場合、フォールバック
-                                logging.warning(f"Google Maps API failed: {data.get('status', 'Unknown error')}")
-                                raise Exception("Google Maps API failed")
-                        else:
-                            raise Exception(f"Google Maps API request failed: {response.status}")
                             
-        except Exception as e:
-            logging.warning(f"Google Maps API error: {e}, using fallback")
-            # フォールバック: シンプルな線形補間
-            for i in range(len(route_points) - 1):
-                current_point = route_points[i]
-                next_point = route_points[i + 1]
-                
-                # 2点間の距離を計算
-                distance = calculate_distance(
-                    current_point["lat"], current_point["lng"],
-                    next_point["lat"], next_point["lng"]
-                )
-                
-                # 距離に応じて分割数を調整
-                steps = max(10, min(30, int(distance * 5)))
-                
-                for step in range(steps + 1):
-                    t = step / steps
-                    lat = current_point["lat"] + (next_point["lat"] - current_point["lat"]) * t
-                    lng = current_point["lng"] + (next_point["lng"] - current_point["lng"]) * t
-                    detailed_route.append({"lat": lat, "lng": lng})
-    else:
-        logging.warning("Google Maps API key not found, using fallback")
-        # APIキーがない場合のフォールバック
+                            logging.info(f"ORS route generated with {len(detailed_route)} points")
+                        else:
+                            raise Exception("Invalid geometry type from ORS")
+                    else:
+                        raise Exception("No valid route data from ORS")
+                else:
+                    raise Exception(f"ORS API request failed: {response.status}")
+                    
+    except Exception as e:
+        logging.warning(f"ORS API error: {e}, using fallback")
+        # フォールバック: シンプルな線形補間
         for i in range(len(route_points) - 1):
             current_point = route_points[i]
             next_point = route_points[i + 1]
             
+            # 2点間の距離を計算
             distance = calculate_distance(
                 current_point["lat"], current_point["lng"],
+                next_point["lat"], next_point["lng"]
+            )
+            
+            # 距離に応じて分割数を調整
+            steps = max(10, min(30, int(distance * 5)))
+            
+            for step in range(steps + 1):
+                t = step / steps
+                lat = current_point["lat"] + (next_point["lat"] - current_point["lat"]) * t
+                lng = current_point["lng"] + (next_point["lng"] - current_point["lng"]) * t
+                detailed_route.append({"lat": lat, "lng": lng})
                 next_point["lat"], next_point["lng"]
             )
             

@@ -12,5 +12,3 @@ services:
         value: https://ybsssvczfmbwplzgqxsh.supabase.co
       - key: SUPABASE_KEY
         value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlic3NzdmN6Zm1id3BsemdxeHNoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjUyNzU2OSwiZXhwIjoyMDcyMTAzNTY5fQ.Sd4iIlhVlwQeIe4Kv3t06lcwfotmXP7Ba-mMVc31Hpo
-      - key: GOOGLE_MAPS_API_KEY
-        value: AIzaSyAf_qxaXszMB2YmNUYrSlocBrf53b7Al6U
