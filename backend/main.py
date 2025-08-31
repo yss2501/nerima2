@@ -39,15 +39,17 @@ ALLOWED_ORIGINS = [
     "http://localhost:3001",  # Next.jsのポート（代替）
     "https://nerima-wonderland-frontend-wkh9.onrender.com",  # Render.comのフロントエンド
     "https://nerima-wonderland-frontend-wk9.onrender.com",   # Render.comのフロントエンド（代替）
-    #"https://nerima-wonderland-backend.onrender.com",  # バックエンド（必要に応じて）
+    "https://nerima-wonderland-frontend-wkh9.onrender.com",  # フロントエンド（別パターン）
+    "https://nerima-wonderland-frontend-wk9.onrender.com",   # フロントエンド（別パターン）
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,  # allow_credentials=True のとき "*" は不可
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # 画像保存用ディレクトリを作成
@@ -59,6 +61,11 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ルーティングルーターを追加
 app.include_router(routing.router)
+
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    """プリフライトリクエスト用のハンドラー"""
+    return {"message": "OK"}
 
 @app.get("/")
 async def root():
