@@ -330,6 +330,12 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
       return;
     }
 
+    // 座標数を制限（ORSの制限: 70以下）
+    if (routeCoordinates.length > 70) {
+      console.log(`Too many coordinates (${routeCoordinates.length}), limiting to 70`);
+      routeCoordinates = routeCoordinates.slice(0, 70);
+    }
+
     // 以前のルートを消す
     if (routeLayer) {
       routeLayer.removeFrom(mapInstance);
@@ -405,8 +411,10 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
       }).addTo(mapInstance).bindPopup('出発地');
     }
 
-    // ルート全体を表示
-    mapInstance.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+    // ルート全体を表示（routeLayerが存在する場合のみ）
+    if (routeLayer) {
+      mapInstance.fitBounds(routeLayer.getBounds(), { padding: [20, 20] });
+    }
   };
 
   const formatDuration = (minutes: number) => {

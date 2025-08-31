@@ -8,6 +8,10 @@ import os
 import uuid
 import shutil
 from pathlib import Path
+from dotenv import load_dotenv
+
+# 環境変数を読み込み
+load_dotenv()
 from config import get_supabase_client
 from models import SpotCreate, SpotUpdate, Spot
 from services import spot_service
@@ -31,8 +35,8 @@ app = FastAPI(
 
 # CORS設定を確実に許可
 ALLOWED_ORIGINS = [
-    #"http://localhost:3000", 
-    #"http://localhost:3001",  # Next.jsのポート
+    "http://localhost:3000",  # Next.jsのポート
+    "http://localhost:3001",  # Next.jsのポート（代替）
     "https://nerima-wonderland-frontend-wkh9.onrender.com",  # Render.comのフロントエンド
     #"https://nerima-wonderland-backend.onrender.com",  # バックエンド（必要に応じて）
 ]

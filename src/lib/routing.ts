@@ -4,7 +4,11 @@ export async function fetchOrsRoute(coords: LatLng[], profile = "foot-walking") 
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'https://nerima-back.onrender.com'}/routing/ors`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ coordinates: coords, profile }),
+    body: JSON.stringify({ 
+      points: coords, 
+      transport_mode: profile === "foot-walking" ? "walking" : 
+                     profile === "cycling-regular" ? "cycling" : "driving" 
+    }),
   });
   if (!res.ok) {
     const t = await res.text();
