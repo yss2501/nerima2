@@ -1,6 +1,6 @@
 
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE || 'https://nerima-wonderland-backend.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE || 'https://nerima-back.onrender.com';
 
 export interface ApiResponse<T = any> {
   data?: T;
