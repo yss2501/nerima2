@@ -28,13 +28,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# CORS設定を確実に許可
+ALLOWED_ORIGINS = [
+    "http://localhost:3000", 
+    "http://localhost:3001",  # Next.jsのポート
+    "https://nerima-wonderland-frontend-wkh9.onrender.com",  # Render.comのフロントエンド
+    "https://nerima-wonderland-backend.onrender.com",  # バックエンド（必要に応じて）
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://localhost:3001",  # Next.jsのポート
-        "https://nerima-wonderland-frontend-wkh9.onrender.com"  # Render.comのフロントエンド
-    ],
+    allow_origins=ALLOWED_ORIGINS,  # allow_credentials=True のとき "*" は不可
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
