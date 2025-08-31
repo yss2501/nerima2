@@ -259,7 +259,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
           
           setRouteInfo(routeData);
           onRouteGenerated?.(routeData);
-          drawRouteOnMap(routeData);
+          await drawRouteOnMap(routeData);
         } else {
           console.error('Invalid route data structure:', routeData);
           alert('ルートデータの形式が正しくありません。');
@@ -284,7 +284,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
     setIsMapClickMode(true);
   };
 
-  const drawRouteOnMap = (route: RouteInfo) => {
+  const drawRouteOnMap = async (route: RouteInfo) => {
     if (!mapInstance) {
       console.error('Map instance not available');
       return;
