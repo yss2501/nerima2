@@ -39,9 +39,10 @@ ALLOWED_ORIGINS = [
     "http://localhost:3001",  # Next.jsのポート（代替）
     "https://nerima-wonderland-frontend-wkh9.onrender.com",  # Render.comのフロントエンド
     "https://nerima-wonderland-frontend-wk9.onrender.com",   # Render.comのフロントエンド（代替）
-    "https://nerima-wonderland-frontend-wkh9.onrender.com",  # フロントエンド（別パターン）
-    "https://nerima-wonderland-frontend-wk9.onrender.com",   # フロントエンド（別パターン）
 ]
+
+# CORS設定をログ出力
+logger.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
