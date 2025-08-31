@@ -110,11 +110,14 @@ async def get_spot(spot_id: str):
 async def create_spot(spot_data: SpotCreate):
     """新しい観光スポットを作成"""
     try:
+        logger.info(f"Creating spot: {spot_data.name}")
         spot = await spot_service.create_spot(spot_data)
+        logger.info(f"Spot created successfully: {spot.id}")
         return spot
     except Exception as e:
         logger.error(f"Error in create_spot: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Spot data: {spot_data.dict()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.put("/api/spots/{spot_id}", response_model=Spot)
 async def update_spot(spot_id: str, spot_data: SpotUpdate):
