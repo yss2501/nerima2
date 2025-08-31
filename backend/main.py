@@ -17,6 +17,7 @@ from option_models import (
     OptionCategoryWithItems
 )
 from option_service import option_service
+from routers import routing
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +51,9 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # 静的ファイルマウント（画像配信用）
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# ルーティングルーターを追加
+app.include_router(routing.router)
 
 @app.get("/")
 async def root():

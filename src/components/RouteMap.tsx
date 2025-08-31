@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Spot, RouteInfo } from '@/lib/api';
+import { fetchOrsRoute, LatLng } from '@/lib/routing';
 import StartLocationSelector from './StartLocationSelector';
 
 interface RouteMapProps {
@@ -25,6 +26,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
   const [returnToStart, setReturnToStart] = useState(true);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [isMapClickMode, setIsMapClickMode] = useState(false);
+  const [routeLayer, setRouteLayer] = useState<any>(null);
 
   // 有効な位置情報を持つスポットのみをフィルタリング
   const validSpots = spots.filter(spot => spot.latitude && spot.longitude);
@@ -328,15 +330,52 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
       return;
     }
 
-    // ルートラインを描画
-    const routeLine = L.polyline(routeCoordinates, {
-      color: '#3b82f6',
-      weight: 4,
-      opacity: 0.8,
-      smoothFactor: 3,  // より滑らかなルート
-      lineCap: 'round',
-      lineJoin: 'round'
-    }).addTo(mapInstance);
+    // 以前のルートを消す
+    if (routeLayer) {
+      routeLayer.removeFrom(mapInstance);
+      setRouteLayer(null);
+    }
+
+    // ORSを使用して道なりのルートを取得
+    try {
+      const waypoints: LatLng[] = routeCoordinates.map(coord => [coord[0], coord[1]]);
+      const profile = transportMode === 'walking' ? 'foot-walking' : 
+                     transportMode === 'cycling' ? 'cycling-regular' : 'driving-car';
+      
+      const geojson = await fetchOrsRoute(waypoints, profile);
+      
+      // GeoJSONをそのまま描画
+      const newRouteLayer = L.geoJSON(geojson, {
+        style: { 
+          color: '#3b82f6',
+          weight: 4,
+          opacity: 0.8
+        }
+      }).addTo(mapInstance);
+      
+      setRouteLayer(newRouteLayer);
+      
+      // ルート全体が入るようにフィット
+      const bounds = newRouteLayer.getBounds();
+      if (bounds.isValid()) {
+        mapInstance.fitBounds(bounds, { padding: [20, 20] });
+      }
+    } catch (error) {
+      console.error('ORS routing failed, using fallback:', error);
+      
+      // フォールバック: 直線ポリライン
+      const routeLine = L.polyline(routeCoordinates, {
+        color: '#3b82f6',
+        weight: 4,
+        opacity: 0.8,
+        smoothFactor: 3,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(mapInstance);
+      
+      setRouteLayer(routeLine);
+      mapInstance.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+    }
 
     // 出発地マーカーを追加
     const startIcon = L.divIcon({
