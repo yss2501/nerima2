@@ -576,16 +576,6 @@ async def calculate_route_info_fallback(start_lat: float, start_lng: float, spot
                 lat = current_point["lat"] + (next_point["lat"] - current_point["lat"]) * t
                 lng = current_point["lng"] + (next_point["lng"] - current_point["lng"]) * t
                 detailed_route.append({"lat": lat, "lng": lng})
-                next_point["lat"], next_point["lng"]
-            )
-            
-            steps = max(10, min(30, int(distance * 5)))
-            
-            for step in range(steps + 1):
-                t = step / steps
-                lat = current_point["lat"] + (next_point["lat"] - current_point["lat"]) * t
-                lng = current_point["lng"] + (next_point["lng"] - current_point["lng"]) * t
-                detailed_route.append({"lat": lat, "lng": lng})
     
     logging.info(f"Fallback calculation complete: total_distance={total_distance:.2f}km, travel_time={total_travel_time:.1f}min, visit_time={total_visit_time}min, total_time={total_time:.1f}min")
     logging.info(f"Generated detailed route with {len(detailed_route)} points")
