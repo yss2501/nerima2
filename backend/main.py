@@ -38,6 +38,7 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Next.jsのポート
     "http://localhost:3001",  # Next.jsのポート（代替）
     "https://nerima-wonderland-frontend-wkh9.onrender.com",  # Render.comのフロントエンド
+    "https://nerima-wonderland-frontend-wk9.onrender.com",   # Render.comのフロントエンド（代替）
     #"https://nerima-wonderland-backend.onrender.com",  # バックエンド（必要に応じて）
 ]
 
