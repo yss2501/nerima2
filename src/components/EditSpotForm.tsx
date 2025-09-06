@@ -13,14 +13,14 @@ interface EditSpotFormProps {
 interface EditSpotFormData {
   name: string;
   address: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: number | null;
+  longitude?: number | null;
   latitudeStr?: string;
   longitudeStr?: string;
-  description?: string;
+  description?: string | null;
   // opening_hours?: Record<string, any>;
   // tags?: string[];
-  visit_duration?: number;
+  visit_duration?: number | null;
   // category?: string;
   // price_range?: string;
   // crowd_level?: string;

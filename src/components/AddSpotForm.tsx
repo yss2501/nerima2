@@ -10,14 +10,14 @@ import { useMultipleOptions, OptionSelect } from '@/hooks/useOptions';
 interface SpotFormData {
   name: string;
   address: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: number | null;
+  longitude?: number | null;
   latitudeStr?: string;
   longitudeStr?: string;
-  description?: string;
-  mood?: string;
-  image_url?: string;
-  visit_duration?: number;
+  description?: string | null;
+  mood?: string | null;
+  image_url?: string | null;
+  visit_duration?: number | null;
   // フォーム専用の追加プロパティ
   opening_hours?: any;
   tags?: string[];
