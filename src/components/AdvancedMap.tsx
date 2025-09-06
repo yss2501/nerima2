@@ -276,7 +276,8 @@ export default function AdvancedMap({ spots, onSpotClick }: AdvancedMapProps) {
                 </div>
               )}
 
-              {selectedSpot.tags && selectedSpot.tags.length > 0 && (
+              {/* tags プロパティは Spot インターフェースに存在しないためコメントアウト */}
+              {/* {selectedSpot.tags && selectedSpot.tags.length > 0 && (
                 <div className="mt-4">
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
                     タグ
@@ -292,7 +293,7 @@ export default function AdvancedMap({ spots, onSpotClick }: AdvancedMapProps) {
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>
