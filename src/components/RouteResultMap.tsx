@@ -89,8 +89,6 @@ export default function RouteResultMap({ routeInfo }: RouteResultMapProps) {
                   <div class="p-2">
                     <h3 class="font-bold text-green-700">出発地</h3>
                     <p class="text-sm text-gray-600">${point.name}</p>
-                    <!-- addressはRoutePointインターフェースに存在しないためコメントアウト -->
-                    <!-- <p class="text-xs text-gray-500">${point.address}</p> -->
                   </div>
                 `;
               } else if (index === routeInfo.route_points.length - 1 && point.name === '出発地に戻る') {
@@ -119,8 +117,6 @@ export default function RouteResultMap({ routeInfo }: RouteResultMapProps) {
                   <div class="p-2">
                     <h3 class="font-bold text-red-700">帰着地</h3>
                     <p class="text-sm text-gray-600">${point.name}</p>
-                    <!-- addressはRoutePointインターフェースに存在しないためコメントアウト -->
-                    <!-- <p class="text-xs text-gray-500">${point.address}</p> -->
                   </div>
                 `;
               } else {
@@ -148,8 +144,6 @@ export default function RouteResultMap({ routeInfo }: RouteResultMapProps) {
                 popupContent = `
                   <div class="p-2">
                     <h3 class="font-bold text-blue-700">${point.name}</h3>
-                    <!-- addressはRoutePointインターフェースに存在しないためコメントアウト -->
-                    <!-- <p class="text-sm text-gray-600">${point.address}</p> -->
                     ${point.description ? `<p class="text-xs text-gray-500 mt-1">${point.description}</p>` : ''}
                     ${point.visit_duration ? `<p class="text-xs text-gray-500 mt-1">滞在時間: ${Math.floor(point.visit_duration / 60)}時間${point.visit_duration % 60}分</p>` : ''}
                     ${point.distance_from_previous !== undefined && point.distance_from_previous > 0 ? `<p class="text-xs text-gray-500 mt-1">前の地点からの距離: ${point.distance_from_previous.toFixed(2)}km</p>` : ''}
