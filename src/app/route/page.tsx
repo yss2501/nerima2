@@ -231,7 +231,7 @@ export default function RoutePage() {
                       📋 ルート詳細
                     </h3>
                     <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {routeInfo.route_points.map((point, index) => (
+                      {routeInfo.route_points.map((point: any, index: number) => (
                         <div key={index} className="bg-white/10 rounded-xl p-4 border border-white/20">
                           <div className="flex items-start space-x-4">
                             <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold">

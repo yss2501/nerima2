@@ -5,4 +5,3 @@ aiohttp>=3.9.1
 python-dotenv>=1.0.0
 sqlalchemy>=2.0.23
 pydantic>=2.8.0
-chardet>=5.0.0

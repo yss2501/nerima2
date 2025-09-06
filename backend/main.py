@@ -12,7 +12,7 @@ import unicodedata
 import re
 import math
 from datetime import datetime
-import chardet
+import codecs
 
 # データベース関連のインポート
 from database import get_db, Spot, CSVUpload, init_db
@@ -514,16 +514,13 @@ async def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)
         # CSVファイルを読み込み（文字エンコーディングを自動検出）
         content = await file.read()
         
-        # 文字エンコーディングを自動検出
-        detected = chardet.detect(content)
-        detected_encoding = detected.get('encoding', 'utf-8')
-        confidence = detected.get('confidence', 0)
-        
-        print(f"検出されたエンコーディング: {detected_encoding} (信頼度: {confidence:.2f})")
-        
-        # 検出されたエンコーディングで試行
-        encodings = [detected_encoding] + ['utf-8', 'shift_jis', 'cp932', 'euc-jp', 'iso-2022-jp']
+        # 文字エンコーディングを自動検出（標準ライブラリを使用）
+        # 一般的な日本語エンコーディングを順番に試行
+        encodings = ['utf-8', 'shift_jis', 'cp932', 'euc-jp', 'iso-2022-jp']
         csv_content = None
+        detected_encoding = 'utf-8'
+        
+        print(f"エンコーディング検出を開始...")
         
         for encoding in encodings:
             if encoding is None:
