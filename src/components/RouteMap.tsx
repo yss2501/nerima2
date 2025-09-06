@@ -169,7 +169,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
                 <h3 style="font-weight: bold; margin-bottom: 8px; color: #1f2937;">${spot.name}</h3>
                 <p style="margin: 4px 0; color: #6b7280;">📍 ${spot.address}</p>
                 ${spot.visit_duration ? `<p style="margin: 4px 0; color: #374151;">⏱️ ${Math.floor(spot.visit_duration / 60)}時間${spot.visit_duration % 60}分</p>` : ''}
-                ${/* spot.rating ? `<p style="margin: 4px 0; color: #f59e0b; font-weight: bold;">★ ${parseFloat(spot.rating).toFixed(1)}</p>` : '' */}
+                ${''}
                 ${spot.description ? `<p style="margin: 4px 0; font-size: 12px; color: #6b7280; line-height: 1.4;">${spot.description}</p>` : ''}
                 <button onclick="window.selectSpot('${spot.id}')" style="
                   background: #3b82f6;
