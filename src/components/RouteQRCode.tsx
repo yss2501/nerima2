@@ -19,7 +19,7 @@ export default function RouteQRCode({ routeInfo }: RouteQRCodeProps) {
       try {
         // GoogleマップのURLを生成
         const waypoints = routeInfo.route_points.map(point => 
-          `${point.latitude},${point.longitude}`
+          `${point.lat},${point.lng}`
         );
         
         // 出発地を最初に、戻り地点を最後に追加
@@ -30,13 +30,13 @@ export default function RouteQRCode({ routeInfo }: RouteQRCodeProps) {
         let googleMapsUrl;
         
         // 出発地と到着地を明確に設定
-        const start = `${startPoint.latitude},${startPoint.longitude}`;
-        const end = `${endPoint.latitude},${endPoint.longitude}`;
+        const start = `${startPoint.lat},${startPoint.lng}`;
+        const end = `${endPoint.lat},${endPoint.lng}`;
         
         if (routeInfo.route_points.length > 2) {
           // 複数地点の場合：経由地を含むルート
           const waypoints = routeInfo.route_points.slice(1, -1).map(point => 
-            `${point.latitude},${point.longitude}`
+            `${point.lat},${point.lng}`
           );
           
           // 経由地をwaypointsパラメータで指定
