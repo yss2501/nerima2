@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { api, Spot, RouteInfo } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import RouteNavigation from '@/components/RouteNavigation';
 import CommonHeader from '@/components/CommonHeader';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
@@ -29,8 +28,6 @@ function RoutePageContent() {
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [showNavigation, setShowNavigation] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
-  const searchParams = useSearchParams();
-
   useEffect(() => {
     loadSpots();
   }, []);
@@ -41,7 +38,8 @@ function RoutePageContent() {
       setError(null);
       
       // URLパラメータからCSVスポットデータを取得
-      const csvSpotsParam = searchParams.get('csvSpots');
+      const urlParams = new URLSearchParams(window.location.search);
+      const csvSpotsParam = urlParams.get('csvSpots');
       if (csvSpotsParam) {
         try {
           const csvSpots = JSON.parse(decodeURIComponent(csvSpotsParam));

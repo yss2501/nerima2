@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { api, Spot } from '@/lib/api';
 import CommonHeader from '@/components/CommonHeader';
 import SpotCard from '@/components/SpotCard';
@@ -20,9 +19,6 @@ const CustomMapPin = dynamic(() => import('@/components/CustomMapPin'), {
 });
 
 function SpotsPageContent() {
-  const searchParams = useSearchParams();
-  const isEditMode = searchParams.get('edit') === 'true';
-  
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +36,10 @@ function SpotsPageContent() {
     try {
       setLoading(true);
       setError(null);
+      
+      // URLパラメータから編集モードを取得
+      const urlParams = new URLSearchParams(window.location.search);
+      const isEditMode = urlParams.get('edit') === 'true';
       const response = await api.spots.getSpots();
       if (response.error) {
         setError(response.error);
