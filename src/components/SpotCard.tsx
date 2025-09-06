@@ -51,17 +51,19 @@ export default function SpotCard({ spot, onClick }: SpotCardProps) {
             {spot.name}
           </h3>
           <div className="flex items-center space-x-1">
-            {spot.rating && (
+            {/* ratingはSpotインターフェースに存在しないためコメントアウト */}
+            {/* {spot.rating && (
               <span className="text-yellow-500 text-sm font-medium">
                 ★ {parseFloat(spot.rating).toFixed(1)}
               </span>
-            )}
+            )} */}
           </div>
         </div>
 
         {/* カテゴリとタグ */}
         <div className="flex flex-wrap gap-2 mb-3">
-          {spot.category && (
+          {/* category、tagsはSpotインターフェースに存在しないためコメントアウト */}
+          {/* {spot.category && (
             <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
               {spot.category}
             </span>
@@ -73,7 +75,7 @@ export default function SpotCard({ spot, onClick }: SpotCardProps) {
             >
               {tag}
             </span>
-          ))}
+          ))} */}
         </div>
 
         {/* 基本情報 */}
@@ -82,10 +84,13 @@ export default function SpotCard({ spot, onClick }: SpotCardProps) {
             📍 {spot.address}
           </p>
           <div className="flex items-center space-x-4 text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
-              ⏱️ {formatDuration(spot.visit_duration)}
-            </span>
-            {spot.price_range && (
+            {spot.visit_duration && (
+              <span className="text-gray-600 dark:text-gray-400">
+                ⏱️ {formatDuration(spot.visit_duration)}
+              </span>
+            )}
+            {/* price_range、crowd_levelはSpotインターフェースに存在しないためコメントアウト */}
+            {/* {spot.price_range && (
               <span className={`px-2 py-1 rounded text-xs ${getPriceRangeColor(spot.price_range)}`}>
                 {spot.price_range === 'free' ? '無料' : 
                  spot.price_range === 'low' ? '安価' :
@@ -97,12 +102,13 @@ export default function SpotCard({ spot, onClick }: SpotCardProps) {
                 {spot.crowd_level === 'low' ? '空いてる' :
                  spot.crowd_level === 'medium' ? '普通' : '混雑'}
               </span>
-            )}
+            )} */}
           </div>
         </div>
 
         {/* 説明文 */}
-        {spot.description && (
+        {/* descriptionはSpotインターフェースに存在しないためコメントアウト */}
+        {/* {spot.description && (
           <div className="mb-3">
             <p className={`text-sm text-gray-700 dark:text-gray-300 ${
               isExpanded ? '' : 'line-clamp-2'
@@ -121,10 +127,11 @@ export default function SpotCard({ spot, onClick }: SpotCardProps) {
               </button>
             )}
           </div>
-        )}
+        )} */}
 
         {/* ベストシーズン */}
-        {spot.best_season && spot.best_season.length > 0 && (
+        {/* best_seasonはSpotインターフェースに存在しないためコメントアウト */}
+        {/* {spot.best_season && spot.best_season.length > 0 && (
           <div className="mb-3">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
               ベストシーズン:
@@ -142,10 +149,11 @@ export default function SpotCard({ spot, onClick }: SpotCardProps) {
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
         {/* 営業時間（折りたたみ可能） */}
-        {spot.opening_hours && (
+        {/* opening_hoursはSpotインターフェースに存在しないためコメントアウト */}
+        {/* {spot.opening_hours && (
           <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
             <button
               onClick={(e) => {
@@ -174,7 +182,7 @@ export default function SpotCard({ spot, onClick }: SpotCardProps) {
               </div>
             )}
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
