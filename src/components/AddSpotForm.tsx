@@ -26,6 +26,8 @@ interface SpotFormData {
   crowd_level?: string;
   rating?: string;
   accessibility?: string[];
+  best_season?: string[];
+  weather_dependent?: boolean;
 }
 
 interface AddSpotFormProps {
