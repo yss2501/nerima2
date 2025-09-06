@@ -23,11 +23,13 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
     getOptions 
   } = useMultipleOptions(['category', 'price_range', 'crowd_level']);
   
-  const [formData, setFormData] = useState<SpotCreate>({
+  const [formData, setFormData] = useState<SpotCreate & { latitudeStr?: string; longitudeStr?: string }>({
     name: '',
     address: '',
-    latitude: '',
-    longitude: '',
+    latitude: undefined,
+    longitude: undefined,
+    latitudeStr: '',
+    longitudeStr: '',
     description: '',
     opening_hours: {},
     tags: [],
@@ -184,8 +186,10 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
       setFormData({
         name: '',
         address: '',
-        latitude: '',
-        longitude: '',
+        latitude: undefined,
+        longitude: undefined,
+        latitudeStr: '',
+        longitudeStr: '',
         description: '',
         opening_hours: {},
         tags: [],
@@ -300,8 +304,10 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
         const result = response.results[0];
         setFormData({
           ...formData,
-          latitude: result.lat.toString(),
-          longitude: result.lng.toString()
+          latitude: result.lat,
+          longitude: result.lng,
+          latitudeStr: result.lat.toString(),
+          longitudeStr: result.lng.toString()
         });
         alert(`座標を自動取得しました！\n緯度: ${result.lat}\n経度: ${result.lng}`);
       } else {
@@ -326,8 +332,10 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
 
     setFormData({
       ...formData,
-      latitude: result.lat.toString(),
-      longitude: result.lng.toString()
+      latitude: result.lat,
+      longitude: result.lng,
+      latitudeStr: result.lat.toString(),
+      longitudeStr: result.lng.toString()
     });
     
     setShowGeocodeResults(false);
@@ -447,8 +455,15 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
                 </label>
                 <input
                   type="text"
-                  value={formData.latitude || ''}
-                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  value={formData.latitudeStr || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      latitudeStr: value,
+                      latitude: value ? parseFloat(value) : undefined
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="35.71023"
                 />
@@ -462,8 +477,15 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
                 </label>
                 <input
                   type="text"
-                  value={formData.longitude || ''}
-                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  value={formData.longitudeStr || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      longitudeStr: value,
+                      longitude: value ? parseFloat(value) : undefined
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="139.81071"
                 />
@@ -473,7 +495,7 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
             {formData.latitude && formData.longitude && (
               <div className="p-3 bg-green-50 dark:bg-green-900 rounded-lg border border-green-200 dark:border-green-700">
                 <p className="text-sm text-green-800 dark:text-green-200">
-                  ✅ 座標が設定されています: {formData.latitude}, {formData.longitude}
+                  ✅ 座標が設定されています: {formData.latitudeStr}, {formData.longitudeStr}
                 </p>
               </div>
             )}
