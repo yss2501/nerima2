@@ -127,9 +127,11 @@ export default function Map({
                     </p>
                     
                     <div className="flex items-center space-x-2">
-                      <span className="text-gray-600">
-                        ⏱️ {formatDuration(spot.visit_duration)}
-                      </span>
+                      {spot.visit_duration && (
+                        <span className="text-gray-600">
+                          ⏱️ {formatDuration(spot.visit_duration)}
+                        </span>
+                      )}
                       {/* {spot.price_range && (
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                           {getPriceRangeText(spot.price_range)}
