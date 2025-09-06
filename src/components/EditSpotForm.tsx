@@ -18,16 +18,16 @@ interface EditSpotFormData {
   latitudeStr?: string;
   longitudeStr?: string;
   description?: string;
-  opening_hours?: Record<string, any>;
-  tags?: string[];
+  // opening_hours?: Record<string, any>;
+  // tags?: string[];
   visit_duration?: number;
-  category?: string;
-  price_range?: string;
-  crowd_level?: string;
-  rating?: string;
-  accessibility?: string[];
-  best_season?: string[];
-  weather_dependent?: boolean;
+  // category?: string;
+  // price_range?: string;
+  // crowd_level?: string;
+  // rating?: string;
+  // accessibility?: string[];
+  // best_season?: string[];
+  // weather_dependent?: boolean;
 }
 
 export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpotFormProps) {
@@ -41,16 +41,16 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
     latitudeStr: spot.latitude?.toString() || '',
     longitudeStr: spot.longitude?.toString() || '',
     description: spot.description || '',
-    opening_hours: spot.opening_hours || {},
-    tags: spot.tags || [],
+    // opening_hours: spot.opening_hours || {},
+    // tags: spot.tags || [],
     visit_duration: spot.visit_duration || 60,
-    category: spot.category || '',
-    price_range: spot.price_range || '',
-    crowd_level: spot.crowd_level || '',
-    rating: spot.rating?.toString() || '',
-    accessibility: spot.accessibility || [],
-    best_season: spot.best_season || [],
-    weather_dependent: spot.weather_dependent || false,
+    // category: spot.category || '',
+    // price_range: spot.price_range || '',
+    // crowd_level: spot.crowd_level || '',
+    // rating: spot.rating?.toString() || '',
+    // accessibility: spot.accessibility || [],
+    // best_season: spot.best_season || [],
+    // weather_dependent: spot.weather_dependent || false,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,11 +124,11 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
         ...formData,
         latitude: formData.latitude ? formData.latitude : undefined,
         longitude: formData.longitude ? formData.longitude : undefined,
-        rating: formData.rating ? formData.rating : undefined,
-        tags: formData.tags?.length ? formData.tags : undefined,
-        accessibility: formData.accessibility?.length ? formData.accessibility : undefined,
-        best_season: formData.best_season?.length ? formData.best_season : undefined,
-        image_id: imageId,
+        // rating: formData.rating ? formData.rating : undefined,
+        // tags: formData.tags?.length ? formData.tags : undefined,
+        // accessibility: formData.accessibility?.length ? formData.accessibility : undefined,
+        // best_season: formData.best_season?.length ? formData.best_season : undefined,
+        // image_id: imageId,
       };
 
       console.log('Updating spot data:', submitData);
