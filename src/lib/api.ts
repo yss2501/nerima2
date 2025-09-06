@@ -4,7 +4,7 @@
 const getApiBaseUrl = () => {
   // 本番環境では環境変数から取得、開発環境ではデフォルト値を使用
   if (process.env.NODE_ENV === 'production') {
-    return process.env.NEXT_PUBLIC_API_BASE_URL || 'https://your-backend-app.onrender.com';
+    return process.env.NEXT_PUBLIC_API_BASE_URL || 'https://nerima2.onrender.com';
   }
   return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://192.168.1.47:8000';
 };
