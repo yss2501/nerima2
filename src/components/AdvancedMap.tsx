@@ -174,31 +174,35 @@ export default function AdvancedMap({ spots, onSpotClick }: AdvancedMapProps) {
                   
                   <div className="flex items-center space-x-2">
                     <span className="text-gray-600 dark:text-gray-400">
-                      ⏱️ {formatDuration(spot.visit_duration)}
+                      ⏱️ {spot.visit_duration ? formatDuration(spot.visit_duration) : '未設定'}
                     </span>
-                    {spot.price_range && (
+                    {/* price_range プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                    {/* {spot.price_range && (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                         {getPriceRangeText(spot.price_range)}
                       </span>
-                    )}
-                    {spot.crowd_level && (
+                    )} */}
+                    {/* crowd_level プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                    {/* {spot.crowd_level && (
                       <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
                         {getCrowdLevelText(spot.crowd_level)}
                       </span>
-                    )}
+                    )} */}
                   </div>
                   
-                  {spot.rating && (
+                  {/* rating プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                  {/* {spot.rating && (
                     <p className="text-yellow-600 font-medium">
                       ★ {parseFloat(spot.rating).toFixed(1)}
                     </p>
-                  )}
+                  )} */}
                   
-                  {spot.category && (
+                  {/* category プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                  {/* {spot.category && (
                     <p className="text-gray-600 dark:text-gray-400">
                       カテゴリ: {spot.category}
                     </p>
-                  )}
+                  )} */}
                   
                   {spot.description && (
                     <p className="text-gray-700 dark:text-gray-300 text-xs line-clamp-2">
@@ -240,19 +244,23 @@ export default function AdvancedMap({ spots, onSpotClick }: AdvancedMapProps) {
               </h3>
               <div className="space-y-2 text-sm">
                 <p><span className="font-medium">住所:</span> {selectedSpot.address}</p>
-                <p><span className="font-medium">滞在時間:</span> {Math.floor(selectedSpot.visit_duration / 60)}時間{selectedSpot.visit_duration % 60}分</p>
-                {selectedSpot.category && (
+                <p><span className="font-medium">滞在時間:</span> {selectedSpot.visit_duration ? `${Math.floor(selectedSpot.visit_duration / 60)}時間${selectedSpot.visit_duration % 60}分` : '未設定'}</p>
+                {/* category プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                {/* {selectedSpot.category && (
                   <p><span className="font-medium">カテゴリ:</span> {selectedSpot.category}</p>
-                )}
-                {selectedSpot.rating && (
+                )} */}
+                {/* rating プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                {/* {selectedSpot.rating && (
                   <p><span className="font-medium">評価:</span> ★ {parseFloat(selectedSpot.rating).toFixed(1)}</p>
-                )}
-                {selectedSpot.price_range && (
+                )} */}
+                {/* price_range プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                {/* {selectedSpot.price_range && (
                   <p><span className="font-medium">料金帯:</span> {getPriceRangeText(selectedSpot.price_range)}</p>
-                )}
-                {selectedSpot.crowd_level && (
+                )} */}
+                {/* crowd_level プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                {/* {selectedSpot.crowd_level && (
                   <p><span className="font-medium">混雑度:</span> {getCrowdLevelText(selectedSpot.crowd_level)}</p>
-                )}
+                )} */}
               </div>
             </div>
 
