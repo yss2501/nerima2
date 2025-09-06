@@ -233,7 +233,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
 
         // グローバル関数を設定（ポップアップ内のボタン用）
         (window as any).selectSpot = (spotId: string) => {
-          const spot = planSpots.find(s => s.id === spotId);
+          const spot = planSpots.find(s => s.id === parseInt(spotId));
           if (spot) {
             handleSpotSelection(spot);
           }
