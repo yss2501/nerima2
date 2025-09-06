@@ -173,7 +173,7 @@ export default function RouteResultMap({ routeInfo }: RouteResultMapProps) {
               const geojson = await fetchOrsRoute(coordinates, profile);
               
               // GeoJSONをそのまま描画
-              L.default.geoJSON(geojson, {
+              L.default.geoJSON(geojson as any, {
                 style: { 
                   color: '#3b82f6',
                   weight: 4,
@@ -182,7 +182,7 @@ export default function RouteResultMap({ routeInfo }: RouteResultMapProps) {
               }).addTo(map);
               
               // ルート全体が入るようにフィット
-              const bounds = L.default.geoJSON(geojson).getBounds();
+              const bounds = L.default.geoJSON(geojson as any).getBounds();
               if (bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [20, 20] });
               }
