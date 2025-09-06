@@ -80,8 +80,8 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
         });
 
         // 地図の中心を計算
-        const lats = validSpots.map(spot => parseFloat(spot.latitude!));
-        const lngs = validSpots.map(spot => parseFloat(spot.longitude!));
+        const lats = validSpots.map(spot => spot.latitude!);
+        const lngs = validSpots.map(spot => spot.longitude!);
         
         const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
         const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
@@ -97,7 +97,7 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
         // マーカーを追加
         const newMarkers: any[] = [];
         validSpots.forEach((spot) => {
-          const marker = L.default.marker([parseFloat(spot.latitude!), parseFloat(spot.longitude!)], {
+          const marker = L.default.marker([spot.latitude!, spot.longitude!], {
             icon: customIcon
           })
             .addTo(map)
@@ -203,7 +203,7 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
                   
                   // 地図上でマーカーをハイライト
                   if (mapInstance) {
-                    mapInstance.setView([parseFloat(spot.latitude!), parseFloat(spot.longitude!)], 15);
+                    mapInstance.setView([spot.latitude!, spot.longitude!], 15);
                   }
                 }}
               >
