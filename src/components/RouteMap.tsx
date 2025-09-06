@@ -283,7 +283,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
       const response = await api.route.calculate({
         start_lat: startLocation.lat,
         start_lng: startLocation.lng,
-        spot_ids: selectedSpots.map(s => s.id),
+        spot_ids: selectedSpots.map(s => s.id.toString()),
         transport_mode: transportMode,
         return_to_start: returnToStart
       });
