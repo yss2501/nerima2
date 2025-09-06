@@ -133,7 +133,7 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
 
       console.log('Updating spot data:', submitData);
       
-      const response = await api.spots.update(spot.id, submitData);
+      const response = await api.spots.update(spot.id.toString(), submitData);
       
       if (response.error) {
         setErrors({ submit: response.error });
