@@ -493,7 +493,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
     });
 
     if (route.route_points[0]) {
-      L.marker([route.route_points[0].latitude || route.route_points[0].lat, route.route_points[0].longitude || route.route_points[0].lng], {
+      L.marker([(route.route_points[0] as any).latitude || route.route_points[0].lat, (route.route_points[0] as any).longitude || route.route_points[0].lng], {
         icon: startIcon
       }).addTo(mapInstance).bindPopup('出発地');
     }
