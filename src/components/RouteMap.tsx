@@ -301,29 +301,29 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         
         console.log('Full Response:', response); // デバッグ用
         console.log('Route Data:', routeData); // デバッグ用
-        console.log('Route Points:', routeData?.route_points); // デバッグ用
-        console.log('Detailed Route:', routeData?.detailed_route); // デバッグ用
+        console.log('Route Points:', (routeData as any)?.route_points); // デバッグ用
+        console.log('Detailed Route:', (routeData as any)?.detailed_route); // デバッグ用
         
         // ルートデータの検証を強化
         if (routeData && (
-          routeData.route_points || 
-          routeData.detailed_route || 
-          routeData.spots ||
+          (routeData as any).route_points || 
+          (routeData as any).detailed_route || 
+          (routeData as any).spots ||
           (Array.isArray(routeData) && routeData.length > 0)
         )) {
           console.log('Route calculation details:');
-          console.log('- Transport mode:', routeData.transport_mode);
-          console.log('- Total distance:', routeData.total_distance, 'km');
-          console.log('- Total time:', routeData.total_time, 'minutes');
-          console.log('- Travel time:', routeData.summary?.travel_time, 'minutes');
-          console.log('- Visit time:', routeData.summary?.visit_time, 'minutes');
-          console.log('- Route points:', routeData.route_points);
+          console.log('- Transport mode:', (routeData as any).transport_mode);
+          console.log('- Total distance:', (routeData as any).total_distance, 'km');
+          console.log('- Total time:', (routeData as any).total_time, 'minutes');
+          console.log('- Travel time:', (routeData as any).summary?.travel_time, 'minutes');
+          console.log('- Visit time:', (routeData as any).summary?.visit_time, 'minutes');
+          console.log('- Route points:', (routeData as any).route_points);
           
-          setRouteInfo(routeData);
-          onRouteGenerated?.(routeData);
+          setRouteInfo(routeData as any);
+          onRouteGenerated?.(routeData as any);
           
           // セッションストレージにルート情報を保存
-          sessionStorage.setItem('routeInfo', JSON.stringify(routeData));
+          sessionStorage.setItem('routeInfo', JSON.stringify(routeData as any));
           
           // ルート生成成功後、次のページに遷移
           router.push('/route-result');
