@@ -144,7 +144,6 @@ export default function RouteResultMap({ routeInfo }: RouteResultMapProps) {
                 popupContent = `
                   <div class="p-2">
                     <h3 class="font-bold text-blue-700">${point.name}</h3>
-                    ${point.description ? `<p class="text-xs text-gray-500 mt-1">${point.description}</p>` : ''}
                     ${point.visit_duration ? `<p class="text-xs text-gray-500 mt-1">滞在時間: ${Math.floor(point.visit_duration / 60)}時間${point.visit_duration % 60}分</p>` : ''}
                     ${point.distance_from_previous !== undefined && point.distance_from_previous > 0 ? `<p class="text-xs text-gray-500 mt-1">前の地点からの距離: ${point.distance_from_previous.toFixed(2)}km</p>` : ''}
                     ${point.travel_time !== undefined && point.travel_time > 0 ? `<p class="text-xs text-gray-500 mt-1">移動時間: ${Math.floor(point.travel_time / 60)}時間${point.travel_time % 60}分</p>` : ''}
