@@ -72,11 +72,11 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
 
   // 初期画像プレビューの設定
   useEffect(() => {
-    if (spot.image_id) {
-      // 既存の画像IDがある場合は、バックエンドから画像URLを取得
-      setImagePreview(`/api/images/${spot.image_id}`);
-    }
-  }, [spot.image_id]);
+    // if (spot.image_id) {
+    //   // 既存の画像IDがある場合は、バックエンドから画像URLを取得
+    //   setImagePreview(`/api/images/${spot.image_id}`);
+    // }
+  }, []);
 
   // バリデーション
   const validateForm = (): boolean => {
@@ -114,10 +114,10 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
     
     try {
       // 画像をアップロード（新しいファイルが選択されている場合）
-      let imageId = spot.image_id;
-      if (selectedFile) {
-        imageId = await uploadImage(selectedFile);
-      }
+      // let imageId = spot.image_id;
+      // if (selectedFile) {
+      //   imageId = await uploadImage(selectedFile);
+      // }
 
       // データの整形
       const submitData: SpotUpdate = {
