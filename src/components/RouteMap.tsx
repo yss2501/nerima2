@@ -295,8 +295,8 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         let routeData = response.data;
         
         // ネストされたdataプロパティがある場合の対応
-        if (response.data.data) {
-          routeData = response.data.data;
+        if ((response.data as any).data) {
+          routeData = (response.data as any).data;
         }
         
         console.log('Full Response:', response); // デバッグ用
