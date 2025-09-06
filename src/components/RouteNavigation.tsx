@@ -4,16 +4,13 @@ import { useState, useEffect } from 'react';
 import { Spot } from '@/lib/api';
 
 interface RoutePoint {
-  id: string | number;
+  lat: number;
+  lng: number;
   name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  description?: string;
-  plan?: string;
+  distance_from_previous: number;
+  travel_time: number;
   visit_duration?: number;
-  distance_from_previous?: number;
-  travel_time_from_previous?: number;
+  visit_time?: number;
 }
 
 interface RouteNavigationProps {
@@ -64,12 +61,12 @@ export default function RouteNavigation({ routePoints, onClose }: RouteNavigatio
   };
 
   const openInMaps = (point: RoutePoint) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${point.latitude},${point.longitude}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${point.lat},${point.lng}`;
     window.open(url, '_blank');
   };
 
   const openInAppleMaps = (point: RoutePoint) => {
-    const url = `http://maps.apple.com/?daddr=${point.latitude},${point.longitude}`;
+    const url = `http://maps.apple.com/?daddr=${point.lat},${point.lng}`;
     window.open(url, '_blank');
   };
 
@@ -115,7 +112,7 @@ export default function RouteNavigation({ routePoints, onClose }: RouteNavigatio
           <div className="space-y-4">
             <div className="text-sm text-gray-600">
               <p>• 総距離: {getDistanceText(routePoints.reduce((sum, point) => sum + (point.distance_from_previous || 0), 0))}</p>
-              <p>• 総時間: {getTimeText(routePoints.reduce((sum, point) => sum + (point.travel_time_from_previous || 0) + (point.visit_duration || 0), 0))}</p>
+              <p>• 総時間: {getTimeText(routePoints.reduce((sum, point) => sum + (point.travel_time || 0) + (point.visit_duration || 0), 0))}</p>
               <p>• 訪問スポット: {routePoints.length}件</p>
             </div>
             <div className="flex gap-2">
@@ -177,10 +174,10 @@ export default function RouteNavigation({ routePoints, onClose }: RouteNavigatio
               <span className="text-gray-600">移動距離:</span>
               <span className="font-medium text-green-700">{getDistanceText(currentPoint.distance_from_previous)}</span>
             </div>
-            {currentPoint.travel_time_from_previous && (
+            {currentPoint.travel_time && (
               <div className="flex justify-between text-sm mt-1">
                 <span className="text-gray-600">移動時間:</span>
-                <span className="font-medium text-green-700">{getTimeText(currentPoint.travel_time_from_previous)}</span>
+                <span className="font-medium text-green-700">{getTimeText(currentPoint.travel_time)}</span>
               </div>
             )}
           </div>
