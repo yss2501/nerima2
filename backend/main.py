@@ -92,9 +92,8 @@ app = FastAPI(title="練馬ワンダーランド API", version="1.0.0", lifespan
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://.*\.onrender\.com",
-    allow_credentials=True,
+    allow_origins=["*"],  # 開発・テスト用に一時的にすべてのオリジンを許可
+    allow_credentials=False,  # allow_origins=["*"]の場合はFalseにする必要がある
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
