@@ -35,7 +35,7 @@ export default function ClientMap({ spots, onSpotClick }: ClientMapProps) {
             
             if (validSpots.length > 0) {
               const bounds = L.default.latLngBounds(
-                validSpots.map(spot => [spot.latitude!, spot.longitude!])
+                validSpots.map(spot => [spot.latitude as number, spot.longitude as number])
               );
               
               if (bounds.getNorthEast() && bounds.getSouthWest()) {
@@ -95,7 +95,7 @@ export default function ClientMap({ spots, onSpotClick }: ClientMapProps) {
               .map((spot) => (
                 <Marker
                   key={spot.id}
-                  position={[spot.latitude!, spot.longitude!]}
+                  position={[spot.latitude as number, spot.longitude as number]}
                   eventHandlers={{
                     click: () => onSpotClick?.(spot),
                   }}

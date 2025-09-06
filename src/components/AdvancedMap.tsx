@@ -38,7 +38,7 @@ export default function AdvancedMap({ spots, onSpotClick }: AdvancedMapProps) {
         }
 
         // 地図の中心を計算
-        const lats = validSpots.map(spot => spot.latitude!);
+        const lats = validSpots.map(spot => spot.latitude as number);
         const lngs = validSpots.map(spot => spot.longitude!);
         
         const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
@@ -56,7 +56,7 @@ export default function AdvancedMap({ spots, onSpotClick }: AdvancedMapProps) {
         // マーカーを追加
         const newMarkers: any[] = [];
         validSpots.forEach((spot) => {
-          const marker = L.default.marker([spot.latitude!, spot.longitude!])
+          const marker = L.default.marker([spot.latitude as number, spot.longitude as number])
             .addTo(map)
             .bindPopup(`
               <div style="min-width: 200px;">
@@ -159,7 +159,7 @@ export default function AdvancedMap({ spots, onSpotClick }: AdvancedMapProps) {
                   
                   // 地図上でマーカーをハイライト
                   if (mapInstance) {
-                    mapInstance.setView([spot.latitude!, spot.longitude!], 15);
+                    mapInstance.setView([spot.latitude as number, spot.longitude as number], 15);
                   }
                 }}
               >

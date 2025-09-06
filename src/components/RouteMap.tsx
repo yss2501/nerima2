@@ -142,8 +142,8 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         });
 
         // 地図の中心を計算
-        const lats = planSpots.map(spot => spot.latitude!);
-        const lngs = planSpots.map(spot => spot.longitude!);
+        const lats = planSpots.map(spot => spot.latitude as number);
+        const lngs = planSpots.map(spot => spot.longitude as number);
         
         const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
         const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
@@ -160,7 +160,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         // マーカーを追加
         const newMarkers: any[] = [];
         planSpots.forEach((spot) => {
-          const marker = L.default.marker([spot.latitude!, spot.longitude!], {
+          const marker = L.default.marker([spot.latitude as number, spot.longitude as number], {
             icon: customIcon
           })
             .addTo(map)

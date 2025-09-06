@@ -30,7 +30,7 @@ function MapCenter({ spots }: { spots: Spot[] }) {
       
       if (validSpots.length > 0) {
         const bounds = L.latLngBounds(
-          validSpots.map(spot => [spot.latitude!, spot.longitude!])
+          validSpots.map(spot => [spot.latitude as number, spot.longitude as number])
         );
         
         // boundsが有効な場合のみfitBoundsを実行
@@ -112,7 +112,7 @@ export default function Map({
           .map((spot) => (
             <Marker
               key={spot.id}
-              position={[spot.latitude!, spot.longitude!]}
+              position={[spot.latitude as number, spot.longitude as number]}
               eventHandlers={{
                 click: () => onSpotClick?.(spot),
               }}

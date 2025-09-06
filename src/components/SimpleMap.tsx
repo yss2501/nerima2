@@ -20,8 +20,8 @@ export default function SimpleMap({ spots, onSpotClick }: SimpleMapProps) {
       return { lat: 35.6762, lng: 139.6503, zoom: 10 }; // 東京の中心
     }
 
-    const lats = validSpots.map(spot => spot.latitude!);
-    const lngs = validSpots.map(spot => spot.longitude!);
+    const lats = validSpots.map(spot => spot.latitude as number);
+    const lngs = validSpots.map(spot => spot.longitude as number);
     
     const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
     const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
