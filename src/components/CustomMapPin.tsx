@@ -87,6 +87,7 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
         const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
 
         // 新しい地図インスタンスを作成
+        if (!mapRef.current) return;
         const map = L.default.map(mapRef.current).setView([centerLat, centerLng], 12);
 
         // タイルレイヤーを追加
@@ -105,7 +106,7 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
               <div style="min-width: 200px;">
                 <h3 style="font-weight: bold; margin-bottom: 8px; color: #1f2937;">${spot.name}</h3>
                 <p style="margin: 4px 0; color: #6b7280;">📍 ${spot.address}</p>
-                <p style="margin: 4px 0; color: #374151;">⏱️ ${Math.floor(spot.visit_duration / 60)}時間${spot.visit_duration % 60}分</p>
+                ${spot.visit_duration ? `<p style="margin: 4px 0; color: #374151;">⏱️ ${Math.floor(spot.visit_duration / 60)}時間${spot.visit_duration % 60}分</p>` : ''}
                 ${spot.rating ? `<p style="margin: 4px 0; color: #f59e0b; font-weight: bold;">★ ${parseFloat(spot.rating).toFixed(1)}</p>` : ''}
                 ${spot.description ? `<p style="margin: 4px 0; font-size: 12px; color: #6b7280; line-height: 1.4;">${spot.description}</p>` : ''}
               </div>
@@ -217,10 +218,12 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
                   </p>
                   
                   <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      ⏱️ {formatDuration(spot.visit_duration)}
-                    </span>
-                    {spot.price_range && (
+                    {spot.visit_duration && (
+                      <span className="text-gray-600 dark:text-gray-400">
+                        ⏱️ {formatDuration(spot.visit_duration)}
+                      </span>
+                    )}
+                    {/* {spot.price_range && (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                         {getPriceRangeText(spot.price_range)}
                       </span>
@@ -229,10 +232,10 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
                       <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
                         {getCrowdLevelText(spot.crowd_level)}
                       </span>
-                    )}
+                    )} */}
                   </div>
                   
-                  {spot.rating && (
+                  {/* {spot.rating && (
                     <p className="text-yellow-600 font-medium">
                       ★ {parseFloat(spot.rating).toFixed(1)}
                     </p>
@@ -242,7 +245,7 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
                     <p className="text-gray-600 dark:text-gray-400">
                       カテゴリ: {spot.category}
                     </p>
-                  )}
+                  )} */}
                   
                   {spot.description && (
                     <p className="text-gray-700 dark:text-gray-300 text-xs line-clamp-2">
@@ -284,8 +287,10 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
               </h3>
               <div className="space-y-2 text-sm">
                 <p><span className="font-medium">住所:</span> {selectedSpot.address}</p>
-                <p><span className="font-medium">滞在時間:</span> {Math.floor(selectedSpot.visit_duration / 60)}時間{selectedSpot.visit_duration % 60}分</p>
-                {selectedSpot.category && (
+                {selectedSpot.visit_duration && (
+                  <p><span className="font-medium">滞在時間:</span> {Math.floor(selectedSpot.visit_duration / 60)}時間{selectedSpot.visit_duration % 60}分</p>
+                )}
+                {/* {selectedSpot.category && (
                   <p><span className="font-medium">カテゴリ:</span> {selectedSpot.category}</p>
                 )}
                 {selectedSpot.rating && (
@@ -296,7 +301,7 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
                 )}
                 {selectedSpot.crowd_level && (
                   <p><span className="font-medium">混雑度:</span> {getCrowdLevelText(selectedSpot.crowd_level)}</p>
-                )}
+                )} */}
               </div>
             </div>
 
@@ -312,7 +317,7 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
                 </div>
               )}
 
-              {selectedSpot.tags && selectedSpot.tags.length > 0 && (
+              {/* {selectedSpot.tags && selectedSpot.tags.length > 0 && (
                 <div className="mt-4">
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
                     タグ
@@ -328,7 +333,7 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>
