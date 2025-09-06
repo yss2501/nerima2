@@ -578,7 +578,7 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
 
             {/* その他の詳細情報は前回と同じ */}
             {/* カテゴリ */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 カテゴリ
               </label>
@@ -598,10 +598,10 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
                 <option value="culture">文化・歴史</option>
                 <option value="other">その他</option>
               </select>
-            </div>
+            </div> */}
 
             {/* 料金帯 */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 料金帯
               </label>
@@ -616,10 +616,10 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
                 <option value="medium">中価格（1,000円～3,000円）</option>
                 <option value="high">高価格（3,000円以上）</option>
               </select>
-            </div>
+            </div> */}
 
             {/* 混雑度 */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 混雑度
               </label>
@@ -633,7 +633,7 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
                 <option value="medium">普通</option>
                 <option value="high">混雑している</option>
               </select>
-            </div>
+            </div> */}
 
             {/* 滞在時間 */}
             <div>
@@ -652,7 +652,7 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
             </div>
 
             {/* 評価 */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 評価（0.0 - 5.0）
               </label>
@@ -667,12 +667,12 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
                 placeholder="4.5"
               />
               {errors.rating && <p className="text-red-500 text-sm mt-1">{errors.rating}</p>}
-            </div>
+            </div> */}
           </div>
         </div>
 
         {/* タグ */}
-        <div>
+        {/* <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             タグ
           </label>
@@ -710,10 +710,10 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
               </span>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* アクセシビリティ */}
-        <div>
+        {/* <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             アクセシビリティ
           </label>
@@ -751,10 +751,10 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
               </span>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* ベストシーズン */}
-        <div>
+        {/* <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             ベストシーズン
           </label>
@@ -792,10 +792,10 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
               </span>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* 天候依存 */}
-        <div>
+        {/* <div>
           <label className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -807,7 +807,7 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
               天候に依存する（雨天時は楽しめない）
             </span>
           </label>
-        </div>
+        </div> */}
 
         {/* アクションボタン */}
         <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-600">
