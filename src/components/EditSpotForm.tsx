@@ -94,9 +94,9 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
       newErrors.visit_duration = '滞在時間は1分から600分の間で入力してください';
     }
 
-    if (formData.rating && (parseFloat(formData.rating) < 0 || parseFloat(formData.rating) > 5)) {
-      newErrors.rating = '評価は0.0から5.0の間で入力してください';
-    }
+    // if (formData.rating && (parseFloat(formData.rating) < 0 || parseFloat(formData.rating) > 5)) {
+    //   newErrors.rating = '評価は0.0から5.0の間で入力してください';
+    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
