@@ -92,21 +92,25 @@ app = FastAPI(title="練馬ワンダーランド API", version="1.0.0", lifespan
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 開発・テスト用に一時的にすべてのオリジンを許可
-    allow_credentials=False,  # allow_origins=["*"]の場合はFalseにする必要がある
+    allow_origins=[
+        "https://nerima2-1.onrender.com",
+        "https://nerima2.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ],
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+    ],
 )
-
-# カスタムCORSミドルウェア
-@app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "false"
-    return response
 
 # Pydanticモデルはmodels.pyからインポート
 

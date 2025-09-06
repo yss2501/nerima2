@@ -27,6 +27,7 @@ function SpotsPageContent() {
   const [editingSpot, setEditingSpot] = useState<Spot | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     loadSpots();
@@ -39,7 +40,9 @@ function SpotsPageContent() {
       
       // URLパラメータから編集モードを取得
       const urlParams = new URLSearchParams(window.location.search);
-      const isEditMode = urlParams.get('edit') === 'true';
+      const editMode = urlParams.get('edit') === 'true';
+      setIsEditMode(editMode);
+      
       const response = await api.spots.getSpots();
       if (response.error) {
         setError(response.error);
