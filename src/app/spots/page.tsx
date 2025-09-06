@@ -71,11 +71,11 @@ export default function SpotsPage() {
     }
   };
 
-  const handleDeleteSpot = async (spot: Spot) => {
+  const handleDeleteSpot = async (spotId: number) => {
     try {
       setDeleting(true);
-      await api.spots.delete(spot.id.toString());
-      setSpots(spots.filter(s => s.id !== spot.id));
+      await api.spots.delete(spotId.toString());
+      setSpots(spots.filter(s => s.id !== spotId));
       setDeleteConfirm(null);
       setEditingSpot(null);
     } catch (err) {
@@ -295,7 +295,7 @@ export default function SpotsPage() {
                   キャンセル
                 </button>
                 <button
-                  onClick={() => handleDeleteSpot(deleteConfirm)}
+                  onClick={() => handleDeleteSpot(deleteConfirm.id)}
                   disabled={deleting}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 disabled:opacity-50"
                 >
