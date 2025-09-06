@@ -667,7 +667,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
               </div>
               <div>
                 <span className="text-green-600 dark:text-green-400">総時間:</span>
-                <span className="ml-2 font-medium">{formatDuration(routeInfo.total_duration || 0)}</span>
+                <span className="ml-2 font-medium">{formatDuration(routeInfo.total_time || 0)}</span>
               </div>
               <div>
                 <span className="text-green-600 dark:text-green-400">移動手段:</span>
