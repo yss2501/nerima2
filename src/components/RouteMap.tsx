@@ -401,10 +401,10 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
     } else {
       // フォールバック: ルートポイント間の直線
       routeCoordinates = route.route_points
-        .filter(point => (point.latitude && point.longitude) || (point.lat && point.lng))
+        .filter(point => ((point as any).latitude && (point as any).longitude) || (point.lat && point.lng))
         .map(point => [
-          point.latitude || point.lat, 
-          point.longitude || point.lng
+          (point as any).latitude || point.lat, 
+          (point as any).longitude || point.lng
         ]);
       console.log('Using simplified route with', routeCoordinates.length, 'points');
       console.log('Route points used:', route.route_points);
