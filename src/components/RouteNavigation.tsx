@@ -1,17 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Spot } from '@/lib/api';
-
-interface RoutePoint {
-  lat: number;
-  lng: number;
-  name: string;
-  distance_from_previous: number;
-  travel_time: number;
-  visit_duration?: number;
-  visit_time?: number;
-}
+import { Spot, RoutePoint } from '@/lib/api';
 
 interface RouteNavigationProps {
   routePoints: RoutePoint[];
@@ -156,10 +146,11 @@ export default function RouteNavigation({ routePoints, onClose }: RouteNavigatio
             <span className="text-2xl">📍</span>
             <h3 className="font-bold text-gray-800">{currentPoint.name}</h3>
           </div>
-          <p className="text-sm text-gray-600 mb-2">{currentPoint.address}</p>
+          {/* addressとdescriptionはRoutePointインターフェースに存在しないためコメントアウト */}
+          {/* <p className="text-sm text-gray-600 mb-2">{currentPoint.address}</p>
           {currentPoint.description && (
             <p className="text-sm text-gray-500">{currentPoint.description}</p>
-          )}
+          )} */}
           {direction && (
             <div className="mt-2 text-sm text-blue-600">
               <span className="font-medium">方向: {direction}</span>
