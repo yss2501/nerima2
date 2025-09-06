@@ -6,6 +6,28 @@ import { useRouter } from 'next/navigation';
 import { geocodeAddress, selectBestGeocodeResult, isValidJapaneseCoordinates, GeocodeResult } from '@/lib/geocoding';
 import { useMultipleOptions, OptionSelect } from '@/hooks/useOptions';
 
+// フォーム専用の型定義
+interface SpotFormData {
+  name: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  latitudeStr?: string;
+  longitudeStr?: string;
+  description?: string;
+  mood?: string;
+  image_url?: string;
+  visit_duration?: number;
+  // フォーム専用の追加プロパティ
+  opening_hours?: any;
+  tags?: string[];
+  category?: string;
+  price_range?: string;
+  crowd_level?: string;
+  rating?: string;
+  accessibility?: string[];
+}
+
 interface AddSpotFormProps {
   onSpotAdded?: (spot: any) => void;
   onCancel?: () => void;
@@ -23,7 +45,7 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
     getOptions 
   } = useMultipleOptions(['category', 'price_range', 'crowd_level']);
   
-  const [formData, setFormData] = useState<SpotCreate & { latitudeStr?: string; longitudeStr?: string }>({
+  const [formData, setFormData] = useState<SpotFormData>({
     name: '',
     address: '',
     latitude: undefined,
@@ -156,16 +178,16 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
         imageId = await uploadImage(selectedFile);
       }
 
-      // データの整形
-      const submitData = {
-        ...formData,
-        latitude: formData.latitude ? formData.latitude : undefined,
-        longitude: formData.longitude ? formData.longitude : undefined,
-        rating: formData.rating ? formData.rating : undefined,
-        tags: formData.tags?.length ? formData.tags : undefined,
-        accessibility: formData.accessibility?.length ? formData.accessibility : undefined,
-        best_season: formData.best_season?.length ? formData.best_season : undefined,
-        image_id: imageId,
+      // SpotCreate型に変換
+      const submitData: SpotCreate = {
+        name: formData.name,
+        address: formData.address,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        description: formData.description,
+        mood: formData.mood,
+        image_url: formData.image_url,
+        visit_duration: formData.visit_duration,
       };
 
       console.log('Submitting spot data:', submitData);
