@@ -10,14 +10,36 @@ interface EditSpotFormProps {
   onCancel?: () => void;
 }
 
+interface EditSpotFormData {
+  name: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  latitudeStr?: string;
+  longitudeStr?: string;
+  description?: string;
+  opening_hours?: Record<string, any>;
+  tags?: string[];
+  visit_duration?: number;
+  category?: string;
+  price_range?: string;
+  crowd_level?: string;
+  rating?: string;
+  accessibility?: string[];
+  best_season?: string[];
+  weather_dependent?: boolean;
+}
+
 export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpotFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [formData, setFormData] = useState<SpotUpdate>({
+  const [formData, setFormData] = useState<EditSpotFormData>({
     name: spot.name,
     address: spot.address,
-    latitude: spot.latitude?.toString() || '',
-    longitude: spot.longitude?.toString() || '',
+    latitude: spot.latitude,
+    longitude: spot.longitude,
+    latitudeStr: spot.latitude?.toString() || '',
+    longitudeStr: spot.longitude?.toString() || '',
     description: spot.description || '',
     opening_hours: spot.opening_hours || {},
     tags: spot.tags || [],
@@ -277,8 +299,10 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
         const result = response.results[0];
         setFormData({
           ...formData,
-          latitude: result.lat.toString(),
-          longitude: result.lng.toString()
+          latitude: result.lat,
+          longitude: result.lng,
+          latitudeStr: result.lat.toString(),
+          longitudeStr: result.lng.toString()
         });
         alert(`座標を自動取得しました！\n緯度: ${result.lat}\n経度: ${result.lng}`);
       } else {
@@ -303,8 +327,10 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
 
     setFormData({
       ...formData,
-      latitude: result.lat.toString(),
-      longitude: result.lng.toString()
+      latitude: result.lat,
+      longitude: result.lng,
+      latitudeStr: result.lat.toString(),
+      longitudeStr: result.lng.toString()
     });
     
     setShowGeocodeResults(false);
@@ -424,8 +450,16 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
                 </label>
                 <input
                   type="text"
-                  value={formData.latitude || ''}
-                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  value={formData.latitudeStr || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = value ? parseFloat(value) : undefined;
+                    setFormData({ 
+                      ...formData, 
+                      latitudeStr: value,
+                      latitude: numValue
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="35.71023"
                 />
@@ -439,8 +473,16 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
                 </label>
                 <input
                   type="text"
-                  value={formData.longitude || ''}
-                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  value={formData.longitudeStr || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = value ? parseFloat(value) : undefined;
+                    setFormData({ 
+                      ...formData, 
+                      longitudeStr: value,
+                      longitude: numValue
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                   placeholder="139.81071"
                 />
