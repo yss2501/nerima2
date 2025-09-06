@@ -20,8 +20,8 @@ export default function SimpleMap({ spots, onSpotClick }: SimpleMapProps) {
       return { lat: 35.6762, lng: 139.6503, zoom: 10 }; // 東京の中心
     }
 
-    const lats = validSpots.map(spot => parseFloat(spot.latitude!));
-    const lngs = validSpots.map(spot => parseFloat(spot.longitude!));
+    const lats = validSpots.map(spot => spot.latitude!);
+    const lngs = validSpots.map(spot => spot.longitude!);
     
     const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
     const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
@@ -104,10 +104,13 @@ export default function SimpleMap({ spots, onSpotClick }: SimpleMapProps) {
                   </p>
                   
                   <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      ⏱️ {formatDuration(spot.visit_duration)}
-                    </span>
-                    {spot.price_range && (
+                    {spot.visit_duration && (
+                      <span className="text-gray-600 dark:text-gray-400">
+                        ⏱️ {formatDuration(spot.visit_duration)}
+                      </span>
+                    )}
+                    {/* price_range、crowd_levelはSpotインターフェースに存在しないためコメントアウト */}
+                    {/* {spot.price_range && (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                         {getPriceRangeText(spot.price_range)}
                       </span>
@@ -116,10 +119,11 @@ export default function SimpleMap({ spots, onSpotClick }: SimpleMapProps) {
                       <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
                         {getCrowdLevelText(spot.crowd_level)}
                       </span>
-                    )}
+                    )} */}
                   </div>
                   
-                  {spot.rating && (
+                  {/* rating、category、descriptionはSpotインターフェースに存在しないためコメントアウト */}
+                  {/* {spot.rating && (
                     <p className="text-yellow-600 font-medium">
                       ★ {parseFloat(spot.rating).toFixed(1)}
                     </p>
@@ -135,7 +139,7 @@ export default function SimpleMap({ spots, onSpotClick }: SimpleMapProps) {
                     <p className="text-gray-700 dark:text-gray-300 text-xs line-clamp-2">
                       {spot.description}
                     </p>
-                  )}
+                  )} */}
                 </div>
               </div>
             ))}
@@ -171,8 +175,11 @@ export default function SimpleMap({ spots, onSpotClick }: SimpleMapProps) {
               </h3>
               <div className="space-y-2 text-sm">
                 <p><span className="font-medium">住所:</span> {selectedSpot.address}</p>
-                <p><span className="font-medium">滞在時間:</span> {Math.floor(selectedSpot.visit_duration / 60)}時間{selectedSpot.visit_duration % 60}分</p>
-                {selectedSpot.category && (
+                {selectedSpot.visit_duration && (
+                  <p><span className="font-medium">滞在時間:</span> {Math.floor(selectedSpot.visit_duration / 60)}時間{selectedSpot.visit_duration % 60}分</p>
+                )}
+                {/* category、rating、price_range、crowd_levelはSpotインターフェースに存在しないためコメントアウト */}
+                {/* {selectedSpot.category && (
                   <p><span className="font-medium">カテゴリ:</span> {selectedSpot.category}</p>
                 )}
                 {selectedSpot.rating && (
@@ -183,12 +190,13 @@ export default function SimpleMap({ spots, onSpotClick }: SimpleMapProps) {
                 )}
                 {selectedSpot.crowd_level && (
                   <p><span className="font-medium">混雑度:</span> {getCrowdLevelText(selectedSpot.crowd_level)}</p>
-                )}
+                )} */}
               </div>
             </div>
 
             <div>
-              {selectedSpot.description && (
+              {/* description、tagsはSpotインターフェースに存在しないためコメントアウト */}
+              {/* {selectedSpot.description && (
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
                     説明
@@ -215,7 +223,7 @@ export default function SimpleMap({ spots, onSpotClick }: SimpleMapProps) {
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>
