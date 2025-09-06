@@ -132,24 +132,24 @@ export interface Spot {
   id: number;
   name: string;
   address: string;
-  latitude?: number;
-  longitude?: number;
-  description?: string;
-  mood?: string;
-  image_url?: string;
-  visit_duration?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  description?: string | null;
+  mood?: string | null;
+  image_url?: string | null;
+  visit_duration?: number | null;
   // 追加のプロパティ
-  rating?: string;
-  category?: string;
-  tags?: string[];
-  price_range?: string;
-  crowd_level?: string;
-  best_season?: string[];
-  opening_hours?: Record<string, string>;
-  accessibility?: string[];
-  weather_dependent?: boolean;
-  plan?: string;
-  image_id?: string;
+  rating?: string | null;
+  category?: string | null;
+  tags?: string[] | null;
+  price_range?: string | null;
+  crowd_level?: string | null;
+  best_season?: string[] | null;
+  opening_hours?: Record<string, string> | null;
+  accessibility?: string[] | null;
+  weather_dependent?: boolean | null;
+  plan?: string | null;
+  image_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -157,47 +157,47 @@ export interface Spot {
 export interface SpotCreate {
   name: string;
   address: string;
-  latitude?: number;
-  longitude?: number;
-  description?: string;
-  mood?: string;
-  image_url?: string;
-  visit_duration?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  description?: string | null;
+  mood?: string | null;
+  image_url?: string | null;
+  visit_duration?: number | null;
   // 追加のプロパティ
-  rating?: string;
-  category?: string;
-  tags?: string[];
-  price_range?: string;
-  crowd_level?: string;
-  best_season?: string[];
-  opening_hours?: Record<string, string>;
-  accessibility?: string[];
-  weather_dependent?: boolean;
-  plan?: string;
-  image_id?: string;
+  rating?: string | null;
+  category?: string | null;
+  tags?: string[] | null;
+  price_range?: string | null;
+  crowd_level?: string | null;
+  best_season?: string[] | null;
+  opening_hours?: Record<string, string> | null;
+  accessibility?: string[] | null;
+  weather_dependent?: boolean | null;
+  plan?: string | null;
+  image_id?: string | null;
 }
 
 export interface SpotUpdate {
-  name?: string;
-  address?: string;
-  latitude?: number;
-  longitude?: number;
-  description?: string;
-  mood?: string;
-  image_url?: string;
-  visit_duration?: number;
+  name?: string | null;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  description?: string | null;
+  mood?: string | null;
+  image_url?: string | null;
+  visit_duration?: number | null;
   // 追加のプロパティ
-  rating?: string;
-  category?: string;
-  tags?: string[];
-  price_range?: string;
-  crowd_level?: string;
-  best_season?: string[];
-  opening_hours?: Record<string, string>;
-  accessibility?: string[];
-  weather_dependent?: boolean;
-  plan?: string;
-  image_id?: string;
+  rating?: string | null;
+  category?: string | null;
+  tags?: string[] | null;
+  price_range?: string | null;
+  crowd_level?: string | null;
+  best_season?: string[] | null;
+  opening_hours?: Record<string, string> | null;
+  accessibility?: string[] | null;
+  weather_dependent?: boolean | null;
+  plan?: string | null;
+  image_id?: string | null;
 }
 
 // ルート計算の型定義
