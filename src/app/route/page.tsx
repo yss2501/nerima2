@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { api, Spot, RouteInfo } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -22,7 +22,7 @@ const RouteMap = dynamic(() => import('@/components/RouteMap'), {
   ),
 });
 
-export default function RoutePage() {
+function RoutePageContent() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -378,5 +378,23 @@ export default function RoutePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function RoutePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+        <CommonHeader />
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-white/20 rounded mb-4"></div>
+            <div className="h-64 bg-white/10 rounded"></div>
+          </div>
+        </div>
+      </div>
+    }>
+      <RoutePageContent />
+    </Suspense>
   );
 }
