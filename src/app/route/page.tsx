@@ -200,13 +200,13 @@ export default function RoutePage() {
                       <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
                         <span className="text-white text-sm mb-1">🚶 移動時間</span>
                         <span className="font-bold text-white text-lg">
-                          {Math.floor((routeInfo.total_travel_time || 0) / 60)}時間{(routeInfo.total_travel_time || 0) % 60}分
+                          {Math.floor((routeInfo.summary.travel_time || 0) / 60)}時間{(routeInfo.summary.travel_time || 0) % 60}分
                         </span>
                       </div>
                       <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
                         <span className="text-white text-sm mb-1">🏛️ 滞在時間</span>
                         <span className="font-bold text-white text-lg">
-                          {Math.floor((routeInfo.total_visit_time || 0) / 60)}時間{(routeInfo.total_visit_time || 0) % 60}分
+                          {Math.floor((routeInfo.summary.visit_time || 0) / 60)}時間{(routeInfo.summary.visit_time || 0) % 60}分
                         </span>
                       </div>
                       <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
