@@ -42,9 +42,9 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
   
   // planSpotsをuseMemoで計算
   const planSpots = useMemo(() => {
-    if (selectedPlan) {
-      return validSpots.filter(spot => spot.plan === selectedPlan);
-    }
+    // if (selectedPlan) {
+    //   return validSpots.filter(spot => spot.plan === selectedPlan);
+    // }
     return validSpots;
   }, [selectedPlan, validSpots]);
 
@@ -142,8 +142,8 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         });
 
         // 地図の中心を計算
-        const lats = planSpots.map(spot => parseFloat(spot.latitude!));
-        const lngs = planSpots.map(spot => parseFloat(spot.longitude!));
+        const lats = planSpots.map(spot => spot.latitude!);
+        const lngs = planSpots.map(spot => spot.longitude!);
         
         const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
         const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
@@ -160,7 +160,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         // マーカーを追加
         const newMarkers: any[] = [];
         planSpots.forEach((spot) => {
-          const marker = L.default.marker([parseFloat(spot.latitude!), parseFloat(spot.longitude!)], {
+          const marker = L.default.marker([spot.latitude!, spot.longitude!], {
             icon: customIcon
           })
             .addTo(map)
@@ -168,8 +168,8 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
               <div style="min-width: 200px;">
                 <h3 style="font-weight: bold; margin-bottom: 8px; color: #1f2937;">${spot.name}</h3>
                 <p style="margin: 4px 0; color: #6b7280;">📍 ${spot.address}</p>
-                <p style="margin: 4px 0; color: #374151;">⏱️ ${Math.floor(spot.visit_duration / 60)}時間${spot.visit_duration % 60}分</p>
-                ${spot.rating ? `<p style="margin: 4px 0; color: #f59e0b; font-weight: bold;">★ ${parseFloat(spot.rating).toFixed(1)}</p>` : ''}
+                ${spot.visit_duration ? `<p style="margin: 4px 0; color: #374151;">⏱️ ${Math.floor(spot.visit_duration / 60)}時間${spot.visit_duration % 60}分</p>` : ''}
+                ${/* spot.rating ? `<p style="margin: 4px 0; color: #f59e0b; font-weight: bold;">★ ${parseFloat(spot.rating).toFixed(1)}</p>` : '' */}
                 ${spot.description ? `<p style="margin: 4px 0; font-size: 12px; color: #6b7280; line-height: 1.4;">${spot.description}</p>` : ''}
                 <button onclick="window.selectSpot('${spot.id}')" style="
                   background: #3b82f6;
