@@ -365,8 +365,8 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
       routePoints = route.route_points;
     } else if (route?.detailed_route && Array.isArray(route.detailed_route)) {
       routePoints = route.detailed_route;
-    } else if (route?.spots && Array.isArray(route.spots)) {
-      routePoints = route.spots;
+    } else if ((route as any)?.spots && Array.isArray((route as any).spots)) {
+      routePoints = (route as any).spots;
     } else if (Array.isArray(route) && route.length > 0) {
       routePoints = route;
     }
