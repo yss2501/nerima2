@@ -111,31 +111,35 @@ export default function ClientMap({ spots, onSpotClick }: ClientMapProps) {
                         
                         <div className="flex items-center space-x-2">
                           <span className="text-gray-600">
-                            ⏱️ {formatDuration(spot.visit_duration)}
+                            ⏱️ {spot.visit_duration ? formatDuration(spot.visit_duration) : '未設定'}
                           </span>
-                          {spot.price_range && (
+                          {/* price_range プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                          {/* {spot.price_range && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                               {getPriceRangeText(spot.price_range)}
                             </span>
-                          )}
-                          {spot.crowd_level && (
+                          )} */}
+                          {/* crowd_level プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                          {/* {spot.crowd_level && (
                             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
                               {getCrowdLevelText(spot.crowd_level)}
                             </span>
-                          )}
+                          )} */}
                         </div>
                         
-                        {spot.rating && (
+                        {/* rating プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                        {/* {spot.rating && (
                           <p className="text-yellow-600 font-medium">
                             ★ {parseFloat(spot.rating).toFixed(1)}
                           </p>
-                        )}
+                        )} */}
                         
-                        {spot.category && (
+                        {/* category プロパティは Spot インターフェースに存在しないためコメントアウト */}
+                        {/* {spot.category && (
                           <p className="text-gray-600">
                             カテゴリ: {spot.category}
                           </p>
-                        )}
+                        )} */}
                         
                         {spot.description && (
                           <p className="text-gray-700 text-xs line-clamp-3">
