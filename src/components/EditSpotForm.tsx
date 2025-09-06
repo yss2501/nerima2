@@ -211,61 +211,61 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
   };
 
   // タグ追加
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
-      setFormData({
-        ...formData,
-        tags: [...(formData.tags || []), tagInput.trim()]
-      });
-      setTagInput('');
-    }
-  };
+  // const addTag = () => {
+  //   if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
+  //     setFormData({
+  //       ...formData,
+  //       tags: [...(formData.tags || []), tagInput.trim()]
+  //     });
+  //     setTagInput('');
+  //   }
+  // };
 
   // タグ削除
-  const removeTag = (tagToRemove: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags?.filter(tag => tag !== tagToRemove) || []
-    });
-  };
+  // const removeTag = (tagToRemove: string) => {
+  //   setFormData({
+  //     ...formData,
+  //     tags: formData.tags?.filter(tag => tag !== tagToRemove) || []
+  //   });
+  // };
 
   // アクセシビリティ追加
-  const addAccessibility = () => {
-    if (accessibilityInput.trim() && !formData.accessibility?.includes(accessibilityInput.trim())) {
-      setFormData({
-        ...formData,
-        accessibility: [...(formData.accessibility || []), accessibilityInput.trim()]
-      });
-      setAccessibilityInput('');
-    }
-  };
+  // const addAccessibility = () => {
+  //   if (accessibilityInput.trim() && !formData.accessibility?.includes(accessibilityInput.trim())) {
+  //     setFormData({
+  //       ...formData,
+  //       accessibility: [...(formData.accessibility || []), accessibilityInput.trim()]
+  //     });
+  //     setAccessibilityInput('');
+  //   }
+  // };
 
   // アクセシビリティ削除
-  const removeAccessibility = (itemToRemove: string) => {
-    setFormData({
-      ...formData,
-      accessibility: formData.accessibility?.filter(item => item !== itemToRemove) || []
-    });
-  };
+  // const removeAccessibility = (itemToRemove: string) => {
+  //   setFormData({
+  //     ...formData,
+  //     accessibility: formData.accessibility?.filter(item => item !== itemToRemove) || []
+  //   });
+  // };
 
   // ベストシーズン追加
-  const addSeason = () => {
-    if (seasonInput.trim() && !formData.best_season?.includes(seasonInput.trim())) {
-      setFormData({
-        ...formData,
-        best_season: [...(formData.best_season || []), seasonInput.trim()]
-      });
-      setSeasonInput('');
-    }
-  };
+  // const addSeason = () => {
+  //   if (seasonInput.trim() && !formData.best_season?.includes(seasonInput.trim())) {
+  //     setFormData({
+  //       ...formData,
+  //       best_season: [...(formData.best_season || []), seasonInput.trim()]
+  //     });
+  //     setSeasonInput('');
+  //   }
+  // };
 
   // ベストシーズン削除
-  const removeSeason = (seasonToRemove: string) => {
-    setFormData({
-      ...formData,
-      best_season: formData.best_season?.filter(season => season !== seasonToRemove) || []
-    });
-  };
+  // const removeSeason = (seasonToRemove: string) => {
+  //   setFormData({
+  //     ...formData,
+  //     best_season: formData.best_season?.filter(season => season !== seasonToRemove) || []
+  //   });
+  // };
 
   // ジオコーディング実行
   const handleGeocode = async () => {
