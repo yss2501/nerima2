@@ -62,7 +62,7 @@ export default function AdvancedMap({ spots, onSpotClick }: AdvancedMapProps) {
               <div style="min-width: 200px;">
                 <h3 style="font-weight: bold; margin-bottom: 8px;">${spot.name}</h3>
                 <p style="margin: 4px 0; color: #666;">📍 ${spot.address}</p>
-                <p style="margin: 4px 0;">⏱️ ${Math.floor(spot.visit_duration / 60)}時間${spot.visit_duration % 60}分</p>
+                <p style="margin: 4px 0;">⏱️ ${spot.visit_duration ? `${Math.floor(spot.visit_duration / 60)}時間${spot.visit_duration % 60}分` : '未設定'}</p>
                 ${spot.rating ? `<p style="margin: 4px 0; color: #f59e0b;">★ ${parseFloat(spot.rating).toFixed(1)}</p>` : ''}
                 ${spot.description ? `<p style="margin: 4px 0; font-size: 12px; color: #666;">${spot.description}</p>` : ''}
               </div>
