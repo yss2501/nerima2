@@ -642,7 +642,7 @@ export default function EditSpotForm({ spot, onSpotUpdated, onCancel }: EditSpot
               </label>
               <input
                 type="number"
-                value={formData.visit_duration || 60}
+                value={formData.visit_duration || ''}
                 onChange={(e) => setFormData({ ...formData, visit_duration: parseInt(e.target.value) || 60 })}
                 min="1"
                 max="600"

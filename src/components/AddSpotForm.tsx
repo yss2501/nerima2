@@ -685,7 +685,7 @@ export default function AddSpotForm({ onSpotAdded, onCancel }: AddSpotFormProps)
               </label>
               <input
                 type="number"
-                value={formData.visit_duration}
+                value={formData.visit_duration || ''}
                 onChange={(e) => setFormData({ ...formData, visit_duration: parseInt(e.target.value) || 60 })}
                 min="1"
                 max="600"
