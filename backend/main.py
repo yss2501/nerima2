@@ -71,6 +71,13 @@ ALLOWED_ORIGINS = [
 if os.getenv("FRONTEND_URL"):
     ALLOWED_ORIGINS.append(os.getenv("FRONTEND_URL"))
 
+# Render.comのドメインパターンを追加
+ALLOWED_ORIGINS.extend([
+    "https://nerima2.onrender.com",
+    "https://nerima-wonderland-frontend.onrender.com",
+    "https://nerima-wonderland.onrender.com",
+])
+
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -86,6 +93,7 @@ app = FastAPI(title="練馬ワンダーランド API", version="1.0.0", lifespan
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
