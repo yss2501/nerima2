@@ -55,8 +55,6 @@ def calculate_travel_time(distance_km: float, transport_mode: str) -> int:
         # デフォルト: 徒歩
         return int(distance_km * 60 / 4)
 
-app = FastAPI(title="練馬ワンダーランド API", version="1.0.0")
-
 # CORS設定（本番環境対応）
 import os
 ALLOWED_ORIGINS = [
@@ -71,6 +69,18 @@ ALLOWED_ORIGINS = [
 # 本番環境のフロントエンドURLを環境変数から取得
 if os.getenv("FRONTEND_URL"):
     ALLOWED_ORIGINS.append(os.getenv("FRONTEND_URL"))
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 起動時
+    init_db()
+    print("練馬ワンダーランド API が起動しました")
+    yield
+    # シャットダウン時（必要に応じて）
+
+app = FastAPI(title="練馬ワンダーランド API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -443,7 +453,7 @@ async def get_spot(spot_id: int, db: Session = Depends(get_db)):
 @app.post("/api/spots", response_model=SpotResponse)
 async def create_spot(spot: SpotCreate, db: Session = Depends(get_db)):
     """新しいスポットを作成"""
-    db_spot = Spot(**spot.dict())
+    db_spot = Spot(**spot.model_dump())
     db.add(db_spot)
     db.commit()
     db.refresh(db_spot)
@@ -456,7 +466,7 @@ async def update_spot(spot_id: int, spot: SpotUpdate, db: Session = Depends(get_
     if not db_spot:
         raise HTTPException(status_code=404, detail="スポットが見つかりません")
     
-    update_data = spot.dict(exclude_unset=True)
+    update_data = spot.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_spot, field, value)
     
@@ -472,7 +482,7 @@ async def update_spot(spot_id: int, spot_update: SpotUpdate, db: Session = Depen
         raise HTTPException(status_code=404, detail="スポットが見つかりません")
     
     # 更新可能なフィールドを更新
-    update_data = spot_update.dict(exclude_unset=True)
+    update_data = spot_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(spot, field, value)
     
@@ -799,12 +809,6 @@ async def generate_route(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ルート生成中にエラーが発生しました: {str(e)}")
 
-
-# アプリケーション起動時にデータベースを初期化
-@app.on_event("startup")
-async def startup_event():
-    init_db()
-    print("練馬ワンダーランド API が起動しました")
 
 if __name__ == "__main__":
     import uvicorn
