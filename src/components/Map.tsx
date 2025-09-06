@@ -30,7 +30,7 @@ function MapCenter({ spots }: { spots: Spot[] }) {
       
       if (validSpots.length > 0) {
         const bounds = L.latLngBounds(
-          validSpots.map(spot => [parseFloat(spot.latitude!), parseFloat(spot.longitude!)])
+          validSpots.map(spot => [spot.latitude!, spot.longitude!])
         );
         
         // boundsが有効な場合のみfitBoundsを実行
@@ -112,7 +112,7 @@ export default function Map({
           .map((spot) => (
             <Marker
               key={spot.id}
-              position={[parseFloat(spot.latitude!), parseFloat(spot.longitude!)]}
+              position={[spot.latitude!, spot.longitude!]}
               eventHandlers={{
                 click: () => onSpotClick?.(spot),
               }}
@@ -130,7 +130,7 @@ export default function Map({
                       <span className="text-gray-600">
                         ⏱️ {formatDuration(spot.visit_duration)}
                       </span>
-                      {spot.price_range && (
+                      {/* {spot.price_range && (
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                           {getPriceRangeText(spot.price_range)}
                         </span>
@@ -139,20 +139,20 @@ export default function Map({
                         <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
                           {getCrowdLevelText(spot.crowd_level)}
                         </span>
-                      )}
+                      )} */}
                     </div>
                     
-                    {spot.rating && (
+                    {/* {spot.rating && (
                       <p className="text-yellow-600 font-medium">
                         ★ {parseFloat(spot.rating).toFixed(1)}
                       </p>
-                    )}
+                    )} */}
                     
-                    {spot.category && (
+                    {/* {spot.category && (
                       <p className="text-gray-600">
                         カテゴリ: {spot.category}
                       </p>
-                    )}
+                    )} */}
                     
                     {spot.description && (
                       <p className="text-gray-700 text-xs line-clamp-3">
