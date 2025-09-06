@@ -138,6 +138,18 @@ export interface Spot {
   mood?: string;
   image_url?: string;
   visit_duration?: number;
+  // 追加のプロパティ
+  rating?: string;
+  category?: string;
+  tags?: string[];
+  price_range?: string;
+  crowd_level?: string;
+  best_season?: string[];
+  opening_hours?: Record<string, string>;
+  accessibility?: string[];
+  weather_dependent?: boolean;
+  plan?: string;
+  image_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -151,6 +163,18 @@ export interface SpotCreate {
   mood?: string;
   image_url?: string;
   visit_duration?: number;
+  // 追加のプロパティ
+  rating?: string;
+  category?: string;
+  tags?: string[];
+  price_range?: string;
+  crowd_level?: string;
+  best_season?: string[];
+  opening_hours?: Record<string, string>;
+  accessibility?: string[];
+  weather_dependent?: boolean;
+  plan?: string;
+  image_id?: string;
 }
 
 export interface SpotUpdate {
@@ -162,6 +186,18 @@ export interface SpotUpdate {
   mood?: string;
   image_url?: string;
   visit_duration?: number;
+  // 追加のプロパティ
+  rating?: string;
+  category?: string;
+  tags?: string[];
+  price_range?: string;
+  crowd_level?: string;
+  best_season?: string[];
+  opening_hours?: Record<string, string>;
+  accessibility?: string[];
+  weather_dependent?: boolean;
+  plan?: string;
+  image_id?: string;
 }
 
 // ルート計算の型定義
@@ -173,6 +209,9 @@ export interface RoutePoint {
   travel_time: number;
   visit_duration?: number;
   visit_time?: number;
+  // 追加のプロパティ
+  address?: string;
+  description?: string;
 }
 
 export interface RouteSummary {
