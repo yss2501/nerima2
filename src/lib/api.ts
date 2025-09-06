@@ -1,6 +1,18 @@
 
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://nerima-backend.onrender.com';
+// API設定（本番環境対応）
+const getApiBaseUrl = () => {
+  // 本番環境では環境変数から取得、開発環境ではデフォルト値を使用
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.NEXT_PUBLIC_API_BASE_URL || 'https://your-backend-app.onrender.com';
+  }
+  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://192.168.1.47:8000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('Environment:', process.env.NODE_ENV);
 
 export interface ApiResponse<T = any> {
   data?: T;
@@ -115,67 +127,41 @@ export interface HealthCheckResponse {
   message: string;
 }
 
-// 観光スポットの型定義
+// 観光スポットの型定義（SQLite対応）
 export interface Spot {
-  id: string;
+  id: number;
   name: string;
   address: string;
-  latitude?: string;
-  longitude?: string;
+  latitude?: number;
+  longitude?: number;
   description?: string;
-  opening_hours?: Record<string, string>;
-  tags?: string[];
-  image_id?: string;
-  visit_duration: number;
-  category?: string;
-  price_range?: string;
-  crowd_level?: string;
-  rating?: string;
-  accessibility?: string[];
-  best_season?: string[];
-  weather_dependent: boolean;
+  mood?: string;
+  image_url?: string;
+  visit_duration?: number;
   created_at: string;
   updated_at: string;
-  is_active: boolean;
 }
 
 export interface SpotCreate {
   name: string;
   address: string;
-  latitude?: string;
-  longitude?: string;
+  latitude?: number;
+  longitude?: number;
   description?: string;
-  opening_hours?: Record<string, string>;
-  tags?: string[];
-  image_id?: string;
+  mood?: string;
+  image_url?: string;
   visit_duration?: number;
-  category?: string;
-  price_range?: string;
-  crowd_level?: string;
-  rating?: string;
-  accessibility?: string[];
-  best_season?: string[];
-  weather_dependent?: boolean;
 }
 
 export interface SpotUpdate {
   name?: string;
   address?: string;
-  latitude?: string;
-  longitude?: string;
+  latitude?: number;
+  longitude?: number;
   description?: string;
-  opening_hours?: Record<string, string>;
-  tags?: string[];
-  image_id?: string;
+  mood?: string;
+  image_url?: string;
   visit_duration?: number;
-  category?: string;
-  price_range?: string;
-  crowd_level?: string;
-  rating?: string;
-  accessibility?: string[];
-  best_season?: string[];
-  weather_dependent?: boolean;
-  is_active?: boolean;
 }
 
 // ルート計算の型定義
@@ -219,10 +205,12 @@ export const api = {
   spots: {
     getAll: (limit?: number, offset?: number) => 
       apiClient.get<Spot[]>(`/api/spots?limit=${limit || 100}&offset=${offset || 0}`),
+    getSpots: () => apiClient.get<Spot[]>('/api/spots'), // SQLite対応のエンドポイント
     getById: (id: string) => apiClient.get<Spot>(`/api/spots/${id}`),
     create: (spot: SpotCreate) => apiClient.post<Spot>('/api/spots', spot),
     update: (id: string, spot: SpotUpdate) => apiClient.put<Spot>(`/api/spots/${id}`, spot),
     delete: (id: string) => apiClient.delete(`/api/spots/${id}`),
+    getPlans: () => apiClient.get<{plans: string[]}>('/api/plans'),
     search: (params: {
       category?: string;
       tags?: string;
@@ -316,6 +304,124 @@ export interface OptionCategoryUpdate {
 export interface OptionCategoryWithItems extends OptionCategory {
   items: OptionItem[];
 }
+
+// CSVアップロード関連API
+export const csvApi = {
+  upload: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    console.log('Making request to:', `${API_BASE_URL}/api/upload/csv`);
+    console.log('File details:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    });
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/upload/csv`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Upload result:', result);
+      return result;
+    } catch (error) {
+      console.error('Fetch error:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
+  },
+  
+  generateRoute: async (file: File, params: {
+    start_lat: number;
+    start_lng: number;
+    transport_mode: string;
+    return_to_start: boolean;
+  }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('start_lat', params.start_lat.toString());
+    formData.append('start_lng', params.start_lng.toString());
+    formData.append('transport_mode', params.transport_mode);
+    formData.append('return_to_start', params.return_to_start.toString());
+    
+    const response = await fetch(`${API_BASE_URL}/api/csv/generate-route`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    return response.json();
+  },
+  
+  getAvailableMoods: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    console.log('Making request to:', `${API_BASE_URL}/api/csv/available-moods`);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/csv/available-moods`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      console.log('Moods response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Moods error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Moods result:', result);
+      return result;
+    } catch (error) {
+      console.error('Moods fetch error:', error);
+      throw error;
+    }
+  },
+  
+  generateMoodRoute: async (file: File, params: {
+    mood: string;
+    start_lat: number;
+    start_lng: number;
+    transport_mode: string;
+    return_to_start: boolean;
+    max_spots: number;
+  }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mood', params.mood);
+    formData.append('start_lat', params.start_lat.toString());
+    formData.append('start_lng', params.start_lng.toString());
+    formData.append('transport_mode', params.transport_mode);
+    formData.append('return_to_start', params.return_to_start.toString());
+    formData.append('max_spots', params.max_spots.toString());
+    
+    const response = await fetch(`${API_BASE_URL}/api/csv/generate-mood-route`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    return response.json();
+  },
+};
 
 // 選択リスト管理API
 export const optionsApi = {

@@ -30,17 +30,37 @@ CREATE INDEX IF NOT EXISTS idx_option_items_category ON option_items(category);
 CREATE INDEX IF NOT EXISTS idx_option_items_active ON option_items(is_active);
 CREATE INDEX IF NOT EXISTS idx_option_items_sort ON option_items(category, sort_order);
 
+-- updated_at を自動更新するトリガー関数
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- トリガーをテーブルに適用
+CREATE TRIGGER update_option_categories_updated_at
+BEFORE UPDATE ON option_categories
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_option_items_updated_at
+BEFORE UPDATE ON option_items
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 -- RLS (Row Level Security) 設定
 ALTER TABLE option_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE option_items ENABLE ROW LEVEL SECURITY;
 
 -- 公開アクセス許可ポリシー
-CREATE POLICY "Enable read access for all users" ON option_categories FOR SELECT USING (true);
-CREATE POLICY "Enable insert access for all users" ON option_categories FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable update access for all users" ON option_categories FOR UPDATE USING (true);
-CREATE POLICY "Enable delete access for all users" ON option_categories FOR DELETE USING (true);
+CREATE POLICY "Allow public read-only access" ON option_categories FOR SELECT USING (true);
+CREATE POLICY "Allow admin full access" ON option_categories FOR ALL
+  USING (auth.jwt() ->> 'role' = 'admin')
+  WITH CHECK (auth.jwt() ->> 'role' = 'admin');
 
-CREATE POLICY "Enable read access for all users" ON option_items FOR SELECT USING (true);
-CREATE POLICY "Enable insert access for all users" ON option_items FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable update access for all users" ON option_items FOR UPDATE USING (true);
-CREATE POLICY "Enable delete access for all users" ON option_items FOR DELETE USING (true);
+CREATE POLICY "Allow public read-only access" ON option_items FOR SELECT USING (true);
+CREATE POLICY "Allow admin full access" ON option_items FOR ALL
+  USING (auth.jwt() ->> 'role' = 'admin')
+  WITH CHECK (auth.jwt() ->> 'role' = 'admin');

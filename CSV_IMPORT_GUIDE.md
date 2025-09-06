@@ -62,3 +62,6 @@ name,address,latitude,longitude,description,visit_duration,category,tags,price_r
 - 観光名所
 - スポーツ施設
 - 教育施設
+
+
+

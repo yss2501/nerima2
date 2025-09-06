@@ -87,7 +87,6 @@ export default function CustomMapPin({ spots, onSpotClick }: CustomMapPinProps) 
         const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
 
         // 新しい地図インスタンスを作成
-        if (!mapRef.current) return;
         const map = L.default.map(mapRef.current).setView([centerLat, centerLng], 12);
 
         // タイルレイヤーを追加

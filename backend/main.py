@@ -1,48 +1,76 @@
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from typing import List, Optional
-import logging
+import csv
+import io
+import aiohttp
+import asyncio
+import urllib.parse
+import unicodedata
+import re
+import math
+from datetime import datetime
+import chardet
+
+# データベース関連のインポート
+from database import get_db, Spot, CSVUpload, init_db
+from models import SpotBase, SpotCreate, SpotUpdate, SpotResponse
+
+# 距離計算関数（ハヴァサイン公式）
+def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """2点間の距離を計算（km）"""
+    R = 6371  # 地球の半径（km）
+    
+    # 度をラジアンに変換
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(lat2)
+    lon2_rad = math.radians(lon2)
+    
+    # 緯度と経度の差
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    
+    # ハヴァサイン公式
+    a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    
+    return R * c
+
+# 移動時間計算関数
+def calculate_travel_time(distance_km: float, transport_mode: str) -> int:
+    """移動時間を計算（分）"""
+    if transport_mode == "walking":
+        # 徒歩: 4km/h
+        return int(distance_km * 60 / 4)
+    elif transport_mode == "cycling":
+        # 自転車: 15km/h
+        return int(distance_km * 60 / 15)
+    elif transport_mode == "driving":
+        # 車: 30km/h（市街地）
+        return int(distance_km * 60 / 30)
+    else:
+        # デフォルト: 徒歩
+        return int(distance_km * 60 / 4)
+
+app = FastAPI(title="練馬ワンダーランド API", version="1.0.0")
+
+# CORS設定（本番環境対応）
 import os
-import uuid
-import shutil
-from pathlib import Path
-from dotenv import load_dotenv
-
-# 環境変数を読み込み
-load_dotenv()
-from config import get_supabase_client
-from models import SpotCreate, SpotUpdate, Spot
-from services import spot_service
-from option_models import (
-    OptionCategory, OptionCategoryCreate, OptionCategoryUpdate,
-    OptionItem, OptionItemCreate, OptionItemUpdate,
-    OptionCategoryWithItems
-)
-from option_service import option_service
-from routers import routing
-
-# ログ設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-app = FastAPI(
-    title="Tourism Route Generator API",
-    description="観光コース自動生成サービスのバックエンドAPI",
-    version="1.0.0"
-)
-
-# CORS設定を確実に許可
 ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Next.jsのポート
-    "http://localhost:3001",  # Next.jsのポート（代替）
-    "https://nerima-wonderland-frontend-wkh9.onrender.com",  # Render.comのフロントエンド
-    "https://nerima-wonderland-frontend-wk9.onrender.com",   # Render.comのフロントエンド（代替）
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://192.168.1.47:3000",
+    "http://192.168.1.47:3001",
 ]
 
-# CORS設定をログ出力
-logger.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
+# 本番環境のフロントエンドURLを環境変数から取得
+if os.getenv("FRONTEND_URL"):
+    ALLOWED_ORIGINS.append(os.getenv("FRONTEND_URL"))
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,768 +78,733 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
-# 画像保存用ディレクトリを作成
-UPLOAD_DIR = Path("uploads/images")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+# Pydanticモデルはmodels.pyからインポート
 
-# 静的ファイルマウント（画像配信用）
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# 住所正規化関数
+def normalize_address(address: str) -> str:
+    """住所の全角文字を半角に変換し、特殊文字を置換"""
+    if not address:
+        return ""
+    
+    # 全角数字を半角に変換
+    address = unicodedata.normalize('NFKC', address)
+    
+    # 全角文字を半角に変換
+    address = address.translate(str.maketrans(
+        '０１２３４５６７８９－',
+        '0123456789-'
+    ))
+    
+    # 特殊文字の置換
+    replacements = {
+        '？': '-',
+        '?': '-',
+        '　': ' ',  # 全角スペースを半角に
+        'ー': '-',  # 全角ハイフンを半角に
+        '－': '-',  # 全角ハイフンを半角に
+        '〜': '-',  # 全角チルダを半角ハイフンに
+        '～': '-',  # 全角チルダを半角ハイフンに
+        '（': '(',  # 全角括弧を半角に
+        '）': ')',
+        '【': '[',
+        '】': ']',
+        '「': '"',
+        '」': '"',
+        '『': '"',
+        '』': '"',
+        '、': ',',
+        '。': '.',
+        '・': ' ',
+    }
+    
+    for old, new in replacements.items():
+        address = address.replace(old, new)
+    
+    # 連続するスペースを1つに
+    address = re.sub(r'\s+', ' ', address)
+    
+    # 先頭と末尾の空白を削除
+    address = address.strip()
+    
+    return address
 
-# ルーティングルーターを追加
-app.include_router(routing.router)
+# 住所パターンマッチング関数
+def create_address_variations(address: str) -> List[str]:
+    """住所のバリエーションを作成"""
+    variations = []
+    
+    # 元の住所
+    variations.append(address)
+    
+    # 東京都を省略
+    if address.startswith('東京都'):
+        variations.append(address.replace('東京都', '').strip())
+    
+    # 練馬区を省略（練馬区の住所の場合）
+    if '練馬区' in address:
+        variations.append(address.replace('練馬区', '').strip())
+    
+    # 丁目を削除
+    if '丁目' in address:
+        variations.append(re.sub(r'\d+丁目', '', address))
+    
+    # 番地を段階的に削除
+    if re.search(r'\d+-\d+-\d+', address):
+        variations.append(re.sub(r'(\d+-\d+)-\d+', r'\1', address))
+        variations.append(re.sub(r'\d+-\d+-\d+', '', address))
+    
+    if re.search(r'\d+-\d+', address):
+        variations.append(re.sub(r'(\d+)-\d+', r'\1', address))
+        variations.append(re.sub(r'\d+-\d+', '', address))
+    
+    # 建物名や部屋番号を削除
+    building_patterns = [
+        r'\s+[A-Za-z0-9]+マンション.*',
+        r'\s+[A-Za-z0-9]+ビル.*',
+        r'\s+[A-Za-z0-9]+タワー.*',
+        r'\s+[A-Za-z0-9]+プラザ.*',
+        r'\s+[A-Za-z0-9]+センター.*',
+        r'\s+[A-Za-z0-9]+ホール.*',
+        r'\s+[A-Za-z0-9]+内.*',
+        r'\s+[A-Za-z0-9]+F.*',
+        r'\s+[A-Za-z0-9]+階.*',
+        r'\s+[A-Za-z0-9]+号.*',
+        r'\s+[A-Za-z0-9]+室.*',
+        r'\s+[A-Za-z0-9]+公園内.*',
+    ]
+    
+    for pattern in building_patterns:
+        if re.search(pattern, address):
+            variations.append(re.sub(pattern, '', address))
+    
+    # 重複を削除し、空文字列を除外
+    variations = list(dict.fromkeys(variations))
+    variations = [addr.strip() for addr in variations if addr.strip()]
+    
+    return variations
 
-@app.options("/{full_path:path}")
-async def options_handler(full_path: str):
-    """プリフライトリクエスト用のハンドラー"""
-    return {"message": "OK"}
+# 住所簡略化関数
+def simplify_address(address: str) -> List[str]:
+    """住所を段階的に簡略化してリストで返す"""
+    simplified = []
+    
+    # 元の住所
+    simplified.append(address)
+    
+    # 建物名や部屋番号を削除（例：江古田マンション 1F、練馬区役所内２０Ｆ）
+    building_patterns = [
+        r'\s+[A-Za-z0-9]+マンション.*',
+        r'\s+[A-Za-z0-9]+ビル.*',
+        r'\s+[A-Za-z0-9]+タワー.*',
+        r'\s+[A-Za-z0-9]+プラザ.*',
+        r'\s+[A-Za-z0-9]+センター.*',
+        r'\s+[A-Za-z0-9]+ホール.*',
+        r'\s+[A-Za-z0-9]+内.*',
+        r'\s+[A-Za-z0-9]+F.*',
+        r'\s+[A-Za-z0-9]+階.*',
+        r'\s+[A-Za-z0-9]+号.*',
+        r'\s+[A-Za-z0-9]+室.*',
+    ]
+    
+    for pattern in building_patterns:
+        if re.search(pattern, address):
+            simplified.append(re.sub(pattern, '', address))
+    
+    # 番地を削除（例：1-2-3 → 1-2）
+    if re.search(r'\d+-\d+-\d+', address):
+        simplified.append(re.sub(r'(\d+-\d+)-\d+', r'\1', address))
+    
+    # 番地をさらに削除（例：1-2 → 1）
+    if re.search(r'\d+-\d+', address):
+        simplified.append(re.sub(r'(\d+)-\d+', r'\1', address))
+    
+    # 丁目を削除
+    if '丁目' in address:
+        simplified.append(re.sub(r'\d+丁目', '', address))
+    
+    # 番地を完全に削除
+    if re.search(r'\d+', address):
+        simplified.append(re.sub(r'\d+', '', address))
+    
+    # 町名を削除（最後の手段）
+    if re.search(r'[町村]', address):
+        simplified.append(re.sub(r'[町村][^区市]*', '', address))
+    
+    # 重複を削除し、空文字列を除外
+    simplified = list(dict.fromkeys(simplified))  # 重複削除（順序保持）
+    simplified = [addr.strip() for addr in simplified if addr.strip()]
+    
+    return simplified
 
+# 練馬区の主要な場所の座標データベース
+NERIMA_LOCATIONS = {
+    # 光が丘エリア
+    "光が丘": (35.7589, 139.6286),
+    "光が丘4丁目": (35.7589, 139.6286),
+    "光が丘4": (35.7589, 139.6286),
+    
+    # 石神井エリア
+    "石神井台": (35.7434, 139.6064),
+    "石神井台1丁目": (35.7434, 139.6064),
+    "石神井台1": (35.7434, 139.6064),
+    
+    # 旭丘エリア
+    "旭丘": (35.7375, 139.6547),
+    "旭丘1丁目": (35.7375, 139.6547),
+    "旭丘1": (35.7375, 139.6547),
+    
+    # 豊玉エリア
+    "豊玉北": (35.7375, 139.6547),
+    "豊玉北6": (35.7375, 139.6547),
+    
+    # 桜台エリア
+    "桜台": (35.7375, 139.6547),
+    "桜台4丁目": (35.7375, 139.6547),
+    "桜台4": (35.7375, 139.6547),
+    
+    # 向山エリア
+    "向山": (35.7375, 139.6547),
+    "向山3丁目": (35.7375, 139.6547),
+    "向山3": (35.7375, 139.6547),
+    
+    # 練馬区役所
+    "練馬区役所": (35.7375, 139.6547),
+    
+    # 豊島区（隣接区）
+    "豊島区南長崎": (35.7200, 139.6800),
+    "南長崎": (35.7200, 139.6800),
+}
+
+# 住所の手動補完機能
+def get_coordinates_from_database(address: str) -> tuple[Optional[float], Optional[float]]:
+    """事前定義された座標データベースから座標を取得"""
+    normalized_address = normalize_address(address)
+    
+    # 完全一致を試行
+    if normalized_address in NERIMA_LOCATIONS:
+        lat, lon = NERIMA_LOCATIONS[normalized_address]
+        print(f"✅ データベースから住所 '{normalized_address}' の座標を取得: ({lat}, {lon})")
+        return lat, lon
+    
+    # 部分一致を試行
+    for key, (lat, lon) in NERIMA_LOCATIONS.items():
+        if key in normalized_address:
+            print(f"✅ データベースから住所 '{normalized_address}' の座標を取得（部分一致: {key}）: ({lat}, {lon})")
+            return lat, lon
+    
+    return None, None
+
+# Nominatim を使用した座標取得
+async def get_coordinates_from_nominatim(address: str) -> tuple[Optional[float], Optional[float]]:
+    """Nominatim を使用して住所から座標を取得"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            encoded_address = urllib.parse.quote(address)
+            url = f"https://nominatim.openstreetmap.org/search?q={encoded_address}&format=json&limit=1&countrycodes=jp"
+            
+            headers = {
+                'User-Agent': 'NerimaWonderland/1.0'
+            }
+            
+            async with session.get(url, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data and len(data) > 0:
+                        lat = float(data[0]['lat'])
+                        lon = float(data[0]['lon'])
+                        return lat, lon
+                        
+    except Exception as e:
+        print(f"Nominatim エラー: {str(e)}")
+    
+    return None, None
+
+# Google Maps Geocoding API を使用した座標取得（APIキーが必要）
+async def get_coordinates_from_google_maps(address: str) -> tuple[Optional[float], Optional[float]]:
+    """Google Maps Geocoding API を使用して住所から座標を取得"""
+    try:
+        # Google Maps API キーが設定されている場合のみ使用
+        api_key = os.getenv("GOOGLE_MAPS_API_KEY")
+        if not api_key:
+            print("Google Maps API キーが設定されていません")
+            return None, None
+            
+        async with aiohttp.ClientSession() as session:
+            encoded_address = urllib.parse.quote(address)
+            url = f"https://maps.googleapis.com/maps/api/geocode/json?address={encoded_address}&key={api_key}&language=ja&region=jp"
+            
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data.get('status') == 'OK' and data.get('results'):
+                        location = data['results'][0]['geometry']['location']
+                        lat = float(location['lat'])
+                        lon = float(location['lng'])
+                        return lat, lon
+                        
+    except Exception as e:
+        print(f"Google Maps エラー: {str(e)}")
+    
+    return None, None
+
+# 住所から座標を取得
+async def get_coordinates_from_address(address: str) -> tuple[Optional[float], Optional[float]]:
+    """住所から緯度経度を取得（複数のサービスを使用）"""
+    try:
+        # 住所を正規化
+        normalized_address = normalize_address(address)
+        print(f"正規化前: '{address}'")
+        print(f"正規化後: '{normalized_address}'")
+        
+        # 1. まずデータベース検索を試行
+        print(f"\n=== データベース検索を試行 ===")
+        lat, lon = get_coordinates_from_database(normalized_address)
+        if lat is not None and lon is not None:
+            return lat, lon
+        
+        # 2. 住所のバリエーションを作成
+        address_variations = create_address_variations(normalized_address)
+        print(f"試行する住所パターン: {address_variations}")
+        
+        # 3. 複数のジオコーディングサービスを試行
+        services = [
+            ("Nominatim", get_coordinates_from_nominatim),
+            ("Google Maps", get_coordinates_from_google_maps),
+        ]
+        
+        for service_name, service_func in services:
+            print(f"\n=== {service_name} で座標取得を試行 ===")
+            for i, addr in enumerate(address_variations):
+                if not addr.strip():
+                    continue
+                
+                lat, lon = await service_func(addr)
+                if lat is not None and lon is not None:
+                    print(f"✅ {service_name} で住所 '{addr}' の座標を取得: ({lat}, {lon})")
+                    return lat, lon
+                else:
+                    print(f"❌ {service_name} で住所 '{addr}' の座標が見つかりませんでした")
+        
+        print(f"❌ 全てのサービスで住所 '{address}' の座標を取得できませんでした")
+        return None, None
+        
+    except Exception as e:
+        print(f"❌ 住所 '{address}' の座標取得でエラー: {str(e)}")
+        return None, None
+
+# APIエンドポイント
 @app.get("/")
 async def root():
-    return {"message": "Tourism Route Generator API is running!"}
+    return {"message": "練馬ワンダーランド API", "status": "running"}
 
-# アプリケーション起動時の初期化
-@app.on_event("startup")
-async def startup_event():
-    """アプリケーション起動時の初期化処理"""
-    try:
-        await option_service.initialize_default_options()
-        logger.info("Default options initialized successfully")
-    except Exception as e:
-        logger.error(f"Error during startup initialization: {e}")
-
-@app.get("/api/health")
+@app.get("/health")
 async def health_check():
-    return {"status": "healthy", "message": "Backend is running"}
+    return {"status": "healthy", "timestamp": datetime.utcnow()}
 
-# 観光スポット関連のAPIエンドポイント
+# スポット関連のエンドポイント
+@app.get("/api/plans")
+async def get_plans(db: Session = Depends(get_db)):
+    """登録されているプランの一覧を取得"""
+    plans = db.query(Spot.plan).filter(Spot.plan.isnot(None), Spot.plan != "").distinct().all()
+    plan_list = [plan[0] for plan in plans if plan[0]]
+    return {"plans": plan_list}
 
-@app.get("/api/spots", response_model=List[Spot])
-async def get_spots(
-    limit: int = Query(100, ge=1, le=1000, description="取得件数"),
-    offset: int = Query(0, ge=0, description="オフセット")
-):
-    """観光スポット一覧を取得"""
-    try:
-        spots = await spot_service.get_all_spots(limit=limit, offset=offset)
-        return spots
-    except Exception as e:
-        logger.error(f"Error in get_spots: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+@app.get("/api/spots", response_model=List[SpotResponse])
+async def get_spots(db: Session = Depends(get_db)):
+    """全スポットを取得"""
+    spots = db.query(Spot).all()
+    # 手動でレスポンスを構築
+    return [
+        SpotResponse(
+            id=spot.id,
+            name=spot.name,
+            address=spot.address,
+            latitude=spot.latitude,
+            longitude=spot.longitude,
+            description=spot.description,
+            plan=spot.plan,
+            image_url=spot.image_url,
+            visit_duration=spot.visit_duration,
+            created_at=spot.created_at,
+            updated_at=spot.updated_at
+        ) for spot in spots
+    ]
 
-@app.get("/api/spots/{spot_id}", response_model=Spot)
-async def get_spot(spot_id: str):
-    """特定の観光スポットを取得"""
-    try:
-        spot = await spot_service.get_spot_by_id(spot_id)
-        if not spot:
-            raise HTTPException(status_code=404, detail="Spot not found")
-        return spot
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in get_spot: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+@app.get("/api/spots/{spot_id}", response_model=SpotResponse)
+async def get_spot(spot_id: int, db: Session = Depends(get_db)):
+    """特定のスポットを取得"""
+    spot = db.query(Spot).filter(Spot.id == spot_id).first()
+    if not spot:
+        raise HTTPException(status_code=404, detail="スポットが見つかりません")
+    return spot
 
-@app.post("/api/spots", response_model=Spot)
-async def create_spot(spot_data: SpotCreate):
-    """新しい観光スポットを作成"""
-    try:
-        logger.info(f"Creating spot: {spot_data.name}")
-        spot = await spot_service.create_spot(spot_data)
-        logger.info(f"Spot created successfully: {spot.id}")
-        return spot
-    except Exception as e:
-        logger.error(f"Error in create_spot: {e}")
-        logger.error(f"Spot data: {spot_data.dict()}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+@app.post("/api/spots", response_model=SpotResponse)
+async def create_spot(spot: SpotCreate, db: Session = Depends(get_db)):
+    """新しいスポットを作成"""
+    db_spot = Spot(**spot.dict())
+    db.add(db_spot)
+    db.commit()
+    db.refresh(db_spot)
+    return db_spot
 
-@app.put("/api/spots/{spot_id}", response_model=Spot)
-async def update_spot(spot_id: str, spot_data: SpotUpdate):
-    """観光スポットを更新"""
-    try:
-        spot = await spot_service.update_spot(spot_id, spot_data)
-        if not spot:
-            raise HTTPException(status_code=404, detail="Spot not found")
-        return spot
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in update_spot: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+@app.put("/api/spots/{spot_id}", response_model=SpotResponse)
+async def update_spot(spot_id: int, spot: SpotUpdate, db: Session = Depends(get_db)):
+    """スポットを更新"""
+    db_spot = db.query(Spot).filter(Spot.id == spot_id).first()
+    if not db_spot:
+        raise HTTPException(status_code=404, detail="スポットが見つかりません")
+    
+    update_data = spot.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_spot, field, value)
+    
+    db.commit()
+    db.refresh(db_spot)
+    return db_spot
+
+@app.put("/api/spots/{spot_id}")
+async def update_spot(spot_id: int, spot_update: SpotUpdate, db: Session = Depends(get_db)):
+    """スポット情報を更新"""
+    spot = db.query(Spot).filter(Spot.id == spot_id).first()
+    if not spot:
+        raise HTTPException(status_code=404, detail="スポットが見つかりません")
+    
+    # 更新可能なフィールドを更新
+    update_data = spot_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(spot, field, value)
+    
+    spot.updated_at = datetime.now()
+    db.commit()
+    db.refresh(spot)
+    
+    return spot
 
 @app.delete("/api/spots/{spot_id}")
-async def delete_spot(spot_id: str):
-    """観光スポットを削除（論理削除）"""
-    try:
-        success = await spot_service.delete_spot(spot_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Spot not found")
-        return {"message": "Spot deleted successfully"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in delete_spot: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+async def delete_spot(spot_id: int, db: Session = Depends(get_db)):
+    """スポットを削除"""
+    db_spot = db.query(Spot).filter(Spot.id == spot_id).first()
+    if not db_spot:
+        raise HTTPException(status_code=404, detail="スポットが見つかりません")
+    
+    db.delete(db_spot)
+    db.commit()
+    return {"message": "スポットが削除されました"}
 
-@app.get("/api/spots/search", response_model=List[Spot])
-async def search_spots(
-    category: Optional[str] = Query(None, description="カテゴリで検索"),
-    tags: Optional[str] = Query(None, description="タグで検索（カンマ区切り）"),
-    price_range: Optional[str] = Query(None, description="料金帯で検索"),
-    crowd_level: Optional[str] = Query(None, description="混雑度で検索")
-):
-    """条件に基づいて観光スポットを検索"""
+# CSVアップロードエンドポイント
+@app.post("/api/upload/csv")
+async def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """CSVファイルをアップロードしてスポットデータをインポート"""
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="CSVファイルをアップロードしてください")
+    
     try:
-        # タグ文字列をリストに変換
-        tag_list = None
-        if tags:
-            tag_list = [tag.strip() for tag in tags.split(",")]
+        # CSVファイルを読み込み（文字エンコーディングを自動検出）
+        content = await file.read()
         
-        spots = await spot_service.search_spots(
-            category=category,
-            tags=tag_list,
-            price_range=price_range,
-            crowd_level=crowd_level
+        # 文字エンコーディングを自動検出
+        detected = chardet.detect(content)
+        detected_encoding = detected.get('encoding', 'utf-8')
+        confidence = detected.get('confidence', 0)
+        
+        print(f"検出されたエンコーディング: {detected_encoding} (信頼度: {confidence:.2f})")
+        
+        # 検出されたエンコーディングで試行
+        encodings = [detected_encoding] + ['utf-8', 'shift_jis', 'cp932', 'euc-jp', 'iso-2022-jp']
+        csv_content = None
+        
+        for encoding in encodings:
+            if encoding is None:
+                continue
+            try:
+                csv_content = content.decode(encoding)
+                print(f"CSVファイルを {encoding} エンコーディングで読み込みました")
+                break
+            except (UnicodeDecodeError, LookupError):
+                continue
+        
+        if csv_content is None:
+            raise HTTPException(status_code=400, detail="CSVファイルの文字エンコーディングを判別できませんでした")
+        
+        csv_reader = csv.DictReader(io.StringIO(csv_content))
+        
+        created_spots = []
+        errors = []
+        skipped_duplicates = []
+        
+        # CSVアップロード履歴を記録
+        csv_upload = CSVUpload(
+            filename=file.filename,
+            spot_count=0
         )
-        return spots
+        db.add(csv_upload)
+        db.flush()  # IDを取得するためにflush
+        
+        for row_num, row in enumerate(csv_reader, start=2):  # ヘッダー行を除く
+            try:
+                # 必須フィールドのチェック
+                if not row.get('name') or not row.get('address'):
+                    errors.append(f"行 {row_num}: 名前と住所は必須です")
+                    continue
+                
+                # 重複チェック（同じ名前のスポットが既に存在するかチェック）
+                existing_spot = db.query(Spot).filter(Spot.name == row['name']).first()
+                if existing_spot:
+                    skipped_duplicates.append({
+                        'row': row_num,
+                        'name': row['name'],
+                        'address': row['address'],
+                        'existing_id': existing_spot.id,
+                        'existing_address': existing_spot.address
+                    })
+                    continue
+                
+                # 座標が未設定の場合は住所から取得
+                latitude = row.get('latitude')
+                longitude = row.get('longitude')
+                
+                if not latitude or not longitude:
+                    lat, lon = await get_coordinates_from_address(row['address'])
+                    if lat and lon:
+                        latitude = lat
+                        longitude = lon
+                    else:
+                        errors.append(f"行 {row_num}: 住所 '{row['address']}' の座標が見つかりませんでした")
+                        continue
+                
+                # プラン名の処理（新規プランの場合はそのまま使用）
+                plan_name = row.get('plan', '').strip()
+                
+                # スポットを作成
+                spot_data = {
+                    'name': row['name'],
+                    'address': row['address'],
+                    'latitude': float(latitude) if latitude else None,
+                    'longitude': float(longitude) if longitude else None,
+                    'description': row.get('description', ''),
+                    'plan': plan_name,
+                    'image_url': row.get('image_url', ''),
+                    'visit_duration': int(row['visit_duration']) if row.get('visit_duration') else None
+                }
+                
+                db_spot = Spot(**spot_data)
+                db.add(db_spot)
+                db.flush()  # IDを取得
+                
+                created_spots.append({
+                    'id': db_spot.id,
+                    'name': db_spot.name,
+                    'address': db_spot.address,
+                    'latitude': db_spot.latitude,
+                    'longitude': db_spot.longitude,
+                    'description': db_spot.description,
+                    'plan': db_spot.plan,
+                    'image_url': db_spot.image_url,
+                    'visit_duration': db_spot.visit_duration
+                })
+                
+            except Exception as e:
+                errors.append(f"行 {row_num}: {str(e)}")
+        
+        # CSVアップロード履歴を更新
+        csv_upload.spot_count = len(created_spots)
+        csv_upload.success = len(errors) == 0
+        
+        # 新規追加されたプラン名を取得
+        new_plans = []
+        if created_spots:
+            for spot in created_spots:
+                if spot.get('plan') and spot['plan'] not in new_plans:
+                    new_plans.append(spot['plan'])
+        
+        db.commit()
+        
+        return {
+            "message": f"CSVファイルが正常にアップロードされました",
+            "created_spots": created_spots,
+            "total_spots": len(created_spots),
+            "skipped_duplicates": skipped_duplicates,
+            "duplicate_count": len(skipped_duplicates),
+            "new_plans": new_plans,
+            "new_plan_count": len(new_plans),
+            "errors": errors,
+            "error_count": len(errors)
+        }
+        
     except Exception as e:
-        logger.error(f"Error in search_spots: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"CSVファイルの処理中にエラーが発生しました: {str(e)}")
 
+# 気分別スポット取得エンドポイント
+
+# ルート生成エンドポイント（GET版）
 @app.get("/api/route")
-async def calculate_route(
-    start_lat: float = Query(..., description="出発地の緯度"),
-    start_lng: float = Query(..., description="出発地の経度"),
-    spot_ids: str = Query(..., description="訪問スポットのID（カンマ区切り）"),
-    transport_mode: str = Query("walking", description="移動手段（walking, cycling, driving）"),
-    return_to_start: bool = Query(True, description="出発地に戻るかどうか"),
-    use_fallback: bool = Query(False, description="強制的にフォールバック計算を使用")
+async def generate_route(
+    start_lat: float = Query(...),
+    start_lng: float = Query(...),
+    spot_ids: str = Query(...),
+    transport_mode: str = Query("walking"),
+    return_to_start: bool = Query(True),
+    db: Session = Depends(get_db)
 ):
-    """観光コースのルートを計算"""
+    """スポットからルートを生成"""
     try:
-        # スポットIDをリストに変換
-        spot_id_list = [id.strip() for id in spot_ids.split(",") if id.strip()]
+        print(f"DEBUG: Received request - start_lat={start_lat}, start_lng={start_lng}, spot_ids={spot_ids}")
         
-        # スポット情報を取得
-        spots = []
-        for spot_id in spot_id_list:
-            spot = await spot_service.get_spot_by_id(spot_id)
-            if spot:
-                spots.append(spot)
+        # スポットIDを解析
+        spot_id_list = [int(id) for id in spot_ids.split(',')]
+        print(f"DEBUG: Parsed spot IDs: {spot_id_list}")
         
-        if not spots:
+        # スポットを取得
+        db_spots = db.query(Spot).filter(Spot.id.in_(spot_id_list)).all()
+        print(f"DEBUG: Found {len(db_spots)} spots in database")
+        
+        if not db_spots:
             raise HTTPException(status_code=404, detail="指定されたスポットが見つかりません")
         
-        # ルート計算（フォールバック強制またはOSRM APIを使用）
-        # OSRM APIが不安定なため、暫定的にフォールバック計算を使用
-        if use_fallback or True:  # 暫定的に常にフォールバック使用
-            logging.info("Using fallback calculation (OSRM API unstable)")
-            route_info = await calculate_route_info_fallback(start_lat, start_lng, spots, transport_mode, return_to_start)
-        else:
-            route_info = await calculate_route_info(start_lat, start_lng, spots, transport_mode, return_to_start)
-        
-        return {
-            "success": True,
-            "data": route_info
-        }
-    except Exception as e:
-        logging.error(f"ルート計算エラー: {e}")
-        raise HTTPException(status_code=500, detail="ルート計算に失敗しました")
-
-async def calculate_route_info(start_lat: float, start_lng: float, spots: list, transport_mode: str, return_to_start: bool):
-    """ルート情報を計算（OSRM APIを使用）"""
-    import aiohttp
-    import asyncio
-    
-    # OSRM APIのプロファイルマッピング
-    osrm_profiles = {
-        "walking": "foot",
-        "cycling": "bike", 
-        "driving": "car"
-    }
-    profile = osrm_profiles.get(transport_mode, "foot")
-    logging.info(f"Transport mode '{transport_mode}' mapped to OSRM profile '{profile}'")
-    total_distance = 0
-    total_time = 0
-    route_points = []
-    detailed_route = []  # 詳細なルートポイント
-    
-    # 出発地をルートポイントに追加
-    route_points.append({
-        "lat": start_lat,
-        "lng": start_lng,
-        "name": "出発地",
-        "distance_from_previous": 0,
-        "travel_time": 0,
-        "visit_duration": 0
-    })
-    
-    # 出発地から最初のスポット
-    current_lat, current_lng = start_lat, start_lng
-    
-    # 全ての座標を収集してOSRM APIで一括計算
-    coordinates = []
-    coordinates.append(f"{start_lng},{start_lat}")  # OSRMは lng,lat の順序
-    
-    for spot in spots:
-        if spot.latitude and spot.longitude:
-            coordinates.append(f"{float(spot.longitude)},{float(spot.latitude)}")
-    
-    if return_to_start and spots:
-        coordinates.append(f"{start_lng},{start_lat}")
-    
-    try:
-        # OSRM APIでルート計算
-        route_data = await get_osrm_route(coordinates, profile)
-        logging.info(f"OSRM API Response for profile {profile}: {route_data}")
-        
-        if route_data and route_data.get('routes') and len(route_data['routes']) > 0:
-            route = route_data['routes'][0]
-            total_distance = route['distance'] / 1000  # メートルをキロメートルに変換
-            total_time = route['duration'] / 60  # 秒を分に変換
-            
-            logging.info(f"OSRM Route: distance={total_distance}km, time={total_time}min")
-            
-            # 移動時間が妥当かチェック（13.95kmで20分は明らかにおかしい）
-            if total_distance > 0 and total_time > 0:
-                speed_check = (total_distance / (total_time / 60))  # km/h
-                logging.info(f"OSRM calculated speed: {speed_check:.1f} km/h for {transport_mode} (profile: {profile})")
-                
-                # 徒歩で15km/h以上、自転車で50km/h以上、車で100km/h以上は異常
-                max_speeds = {"foot": 15, "bike": 50, "car": 100}
-                min_speeds = {"foot": 2, "bike": 8, "car": 20}  # 最低速度もチェック
-                
-                if (speed_check > max_speeds.get(profile, 100) or 
-                    speed_check < min_speeds.get(profile, 1)):
-                    logging.warning(f"OSRM speed {speed_check:.1f} km/h is unrealistic for {profile}. Using fallback.")
-                    return await calculate_route_info_fallback(start_lat, start_lng, spots, transport_mode, return_to_start)
+        # 座標が未設定のスポットがある場合は住所から取得
+        for spot in db_spots:
+            if not spot.latitude or not spot.longitude:
+                lat, lon = await get_coordinates_from_address(spot.address)
+                if lat and lon:
+                    spot.latitude = lat
+                    spot.longitude = lon
+                    db.commit()
                 else:
-                    logging.info(f"OSRM speed {speed_check:.1f} km/h is acceptable for {profile}. Using OSRM result.")
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"スポット '{spot.name}' の座標を取得できませんでした"
+                    )
+        
+        # ルート計算（距離・時間計算付き）
+        route_points = []
+        total_distance = 0
+        total_travel_time = 0
+        
+        print(f"DEBUG: ルート生成開始 - スポット数: {len(db_spots)}, 出発地: ({start_lat}, {start_lng})")
+        
+        # 出発地から最初のスポット
+        if db_spots:
+            first_spot = db_spots[0]
+            distance = calculate_distance(start_lat, start_lng, first_spot.latitude, first_spot.longitude)
+            travel_time = calculate_travel_time(distance, transport_mode)
             
-            # 詳細なルートジオメトリを取得
-            if 'geometry' in route:
-                detailed_route = decode_polyline(route['geometry'])
-            
-            # 各区間の詳細情報を計算
-            legs = route.get('legs', [])
-            logging.info(f"Route legs: {len(legs)}")
-            
-            # 出発地から各スポットへの区間情報
-            for i, spot in enumerate(spots):
-                if i < len(legs):
-                    leg = legs[i]
-                    route_points.append({
-                        "lat": float(spot.latitude),
-                        "lng": float(spot.longitude),
-                        "name": spot.name,
-                        "distance_from_previous": leg['distance'] / 1000,  # km
-                        "travel_time": int(leg['duration'] / 60),  # 分
-                        "visit_duration": spot.visit_duration,
-                        "image_id": spot.image_id
-                    })
-                    logging.info(f"Leg {i}: {spot.name}, distance={leg['distance']/1000:.2f}km, time={leg['duration']/60:.1f}min")
-            
-            # 出発地に戻る場合
-            if return_to_start and spots and len(legs) > len(spots):
-                final_leg = legs[-1]
-                route_points.append({
-                    "lat": start_lat,
-                    "lng": start_lng,
-                    "name": "出発地（戻り）",
-                    "distance_from_previous": final_leg['distance'] / 1000,
-                    "travel_time": int(final_leg['duration'] / 60),
-                    "visit_duration": 0
-                })
-                logging.info(f"Return leg: distance={final_leg['distance']/1000:.2f}km, time={final_leg['duration']/60:.1f}min")
-        else:
-            logging.warning(f"OSRM API returned no routes for profile {profile}. Using fallback.")
-            # フォールバック: 直線距離で計算
-            return await calculate_route_info_fallback(start_lat, start_lng, spots, transport_mode, return_to_start)
-    
-    except Exception as e:
-        logging.error(f"OSRM API エラー: {e}")
-        # フォールバック: 直線距離で計算
-        return await calculate_route_info_fallback(start_lat, start_lng, spots, transport_mode, return_to_start)
-    
-    # 滞在時間を総時間に追加
-    visit_time = sum(spot.visit_duration for spot in spots)
-    travel_time_only = total_time  # OSRMからの移動時間のみ
-    total_time_with_visits = total_time + visit_time  # 移動時間 + 滞在時間
-    
-    logging.info(f"Final calculation: travel_time={travel_time_only:.1f}min, visit_time={visit_time}min, total_time={total_time_with_visits:.1f}min")
-    
-    return {
-        "total_distance": round(total_distance, 2),
-        "total_time": int(total_time_with_visits),
-        "transport_mode": transport_mode,
-        "route_points": route_points,
-        "detailed_route": detailed_route,  # 詳細なルートライン用
-        "summary": {
-            "total_spots": len(spots),
-            "travel_time": int(travel_time_only),
-            "visit_time": visit_time,
-            "return_to_start": return_to_start
-        }
-    }
-
-async def get_osrm_route(coordinates: list, profile: str = "foot"):
-    """OSRM APIでルート情報を取得"""
-    import aiohttp
-    import asyncio
-    
-    # OSRM Demo Server（本番環境では独自サーバーを推奨）
-    base_url = f"http://router.project-osrm.org/route/v1/{profile}"
-    coordinates_str = ";".join(coordinates)
-    
-    url = f"{base_url}/{coordinates_str}"
-    params = {
-        "overview": "full",
-        "geometries": "polyline",
-        "steps": "false"
-    }
-    
-    logging.info(f"OSRM API Request: {url} with params: {params}")
-    
-    try:
-        timeout = aiohttp.ClientTimeout(total=15)  # 15秒タイムアウト
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url, params=params) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    logging.info(f"OSRM API Success: received {len(data.get('routes', []))} routes")
-                    return data
-                else:
-                    error_text = await response.text()
-                    logging.error(f"OSRM API Error {response.status}: {error_text}")
-                    return None
-    except asyncio.TimeoutError:
-        logging.error("OSRM API timeout")
-        return None
-    except Exception as e:
-        logging.error(f"OSRM API request failed: {e}")
-        return None
-
-def decode_polyline(polyline_str):
-    """Polylineをデコードして座標リストに変換"""
-    try:
-        import polyline
-        coordinates = polyline.decode(polyline_str)
-        return [{"lat": lat, "lng": lng} for lat, lng in coordinates]
-    except ImportError:
-        logging.warning("polyline package not installed. Using simplified route.")
-        return []
-    except Exception as e:
-        logging.error(f"Polyline decode error: {e}")
-        return []
-
-async def calculate_route_info_fallback(start_lat: float, start_lng: float, spots: list, transport_mode: str, return_to_start: bool):
-    """フォールバック: 直線距離での計算（移動手段別速度適用）"""
-    logging.info(f"Using fallback calculation for transport_mode: {transport_mode}")
-    
-    # 移動手段による速度（km/h）
-    speeds = {
-        "walking": 4.0,   # 徒歩: 4km/h
-        "cycling": 15.0,  # 自転車: 15km/h  
-        "driving": 40.0   # タクシー: 40km/h（都市部を考慮）
-    }
-    
-    logging.info(f"Available speeds: {speeds}")
-    logging.info(f"Requested transport_mode: '{transport_mode}'")
-    
-    speed = speeds.get(transport_mode, 4.0)
-    logging.info(f"Selected speed for {transport_mode}: {speed} km/h")
-    
-    total_distance = 0
-    total_travel_time = 0  # 移動時間のみ
-    route_points = []
-    
-    # 出発地をルートポイントに追加
-    route_points.append({
-        "lat": start_lat,
-        "lng": start_lng,
-        "name": "出発地",
-        "distance_from_previous": 0,
-        "travel_time": 0,
-        "visit_duration": 0
-    })
-    
-    current_lat, current_lng = start_lat, start_lng
-    
-    for i, spot in enumerate(spots):
-        if spot.latitude and spot.longitude:
-            distance = calculate_distance(
-                current_lat, current_lng,
-                float(spot.latitude), float(spot.longitude)
-            )
-            
-            # 直線距離を道路距離に補正（直線距離 × 1.3倍）
-            road_distance = distance * 1.3
-            travel_time = (road_distance / speed) * 60  # 分単位
-            
-            logging.info(f"Fallback calculation for {spot.name}:")
-            logging.info(f"  - Direct distance: {distance:.2f}km")
-            logging.info(f"  - Road distance (1.3x): {road_distance:.2f}km") 
-            logging.info(f"  - Speed: {speed} km/h ({transport_mode})")
-            logging.info(f"  - Travel time: {travel_time:.1f} minutes")
+            print(f"DEBUG: 出発地から最初のスポット({first_spot.name})への距離: {distance:.2f}km, 時間: {travel_time}分")
             
             route_points.append({
-                "lat": float(spot.latitude),
-                "lng": float(spot.longitude),
-                                    "name": spot.name,
-                    "distance_from_previous": road_distance,
-                    "travel_time": int(travel_time),
-                    "visit_duration": spot.visit_duration,
-                    "image_id": spot.image_id
+                "id": "start",
+                "name": "出発地",
+                "address": "出発地",
+                "latitude": start_lat,
+                "longitude": start_lng,
+                "description": "出発地",
+                "plan": None,
+                "visit_duration": 0,
+                "distance_from_previous": 0,
+                "travel_time_from_previous": 0
             })
             
-            total_distance += road_distance
+            route_points.append({
+                "id": first_spot.id,
+                "name": first_spot.name,
+                "address": first_spot.address,
+                "latitude": first_spot.latitude,
+                "longitude": first_spot.longitude,
+                "description": first_spot.description,
+                "plan": first_spot.plan,
+                "visit_duration": first_spot.visit_duration or 0,
+                "distance_from_previous": distance,
+                "travel_time_from_previous": travel_time
+            })
+            
+            total_distance += distance
             total_travel_time += travel_time
             
-            logging.info(f"Spot {i+1} ({spot.name}): distance={road_distance:.2f}km, travel_time={travel_time:.1f}min")
-            
-            current_lat, current_lng = float(spot.latitude), float(spot.longitude)
-    
-    if return_to_start and spots:
-        final_distance = calculate_distance(current_lat, current_lng, start_lat, start_lng)
-        road_final_distance = final_distance * 1.3
-        final_travel_time = (road_final_distance / speed) * 60
-        
-        total_distance += road_final_distance
-        total_travel_time += final_travel_time
-        
-        route_points.append({
-            "lat": start_lat,
-            "lng": start_lng,
-            "name": "出発地（戻り）",
-            "distance_from_previous": road_final_distance,
-            "travel_time": int(final_travel_time),
-            "visit_duration": 0
-        })
-        
-        logging.info(f"Return: distance={road_final_distance:.2f}km, travel_time={final_travel_time:.1f}min")
-    
-    # 滞在時間の合計
-    total_visit_time = sum(spot.visit_duration for spot in spots)
-    total_time = total_travel_time + total_visit_time
-    
-    # 実際の道路に沿ったルートを生成（ORS API使用）
-    detailed_route = []
-    
-    # ORS APIを使用してルートを生成
-    try:
-        # ルートポイントをORS用の形式に変換
-        coordinates = []
-        for point in route_points:
-            coordinates.append([point['lng'], point['lat']])  # ORSは [lng, lat] 順
-        
-        # 移動手段に応じたプロファイルを設定
-        profile_map = {
-            'walking': 'foot-walking',
-            'cycling': 'cycling-regular', 
-            'driving': 'driving-car'
-        }
-        profile = profile_map.get(transport_mode, 'foot-walking')
-        
-        # ORS APIを呼び出し
-        ors_url = f"https://api.openrouteservice.org/v2/directions/{profile}/geojson"
-        headers = {
-            "Authorization": os.getenv("ORS_API_KEY"),
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "coordinates": coordinates,
-            "instructions": False
-        }
-        
-        logging.info(f"Calling ORS API with profile: {profile}")
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.post(ors_url, headers=headers, json=payload) as response:
-                logging.info(f"ORS API response status: {response.status}")
+            # スポット間の移動
+            for i in range(1, len(db_spots)):
+                prev_spot = db_spots[i-1]
+                current_spot = db_spots[i]
                 
-                if response.status == 200:
-                    data = await response.json()
-                    logging.info(f"ORS API response received")
-                    
-                    if data.get('features') and data['features'][0].get('geometry'):
-                        # GeoJSONから座標を抽出
-                        geometry = data['features'][0]['geometry']
-                        if geometry['type'] == 'LineString':
-                            for coord in geometry['coordinates']:
-                                detailed_route.append({
-                                    "lat": coord[1],  # [lng, lat] から [lat, lng] に変換
-                                    "lng": coord[0]
-                                })
-                            
-                            logging.info(f"ORS route generated with {len(detailed_route)} points")
-                        else:
-                            raise Exception("Invalid geometry type from ORS")
-                    else:
-                        raise Exception("No valid route data from ORS")
-                else:
-                    raise Exception(f"ORS API request failed: {response.status}")
-                    
-    except Exception as e:
-        logging.warning(f"ORS API error: {e}, using fallback")
-        # フォールバック: シンプルな線形補間
-        for i in range(len(route_points) - 1):
-            current_point = route_points[i]
-            next_point = route_points[i + 1]
+                distance = calculate_distance(
+                    prev_spot.latitude, prev_spot.longitude,
+                    current_spot.latitude, current_spot.longitude
+                )
+                travel_time = calculate_travel_time(distance, transport_mode)
+                
+                print(f"DEBUG: {prev_spot.name}から{current_spot.name}への距離: {distance:.2f}km, 時間: {travel_time}分")
+                
+                route_points.append({
+                    "id": current_spot.id,
+                    "name": current_spot.name,
+                    "address": current_spot.address,
+                    "latitude": current_spot.latitude,
+                    "longitude": current_spot.longitude,
+                    "description": current_spot.description,
+                    "plan": current_spot.plan,
+                    "visit_duration": current_spot.visit_duration or 0,
+                    "distance_from_previous": distance,
+                    "travel_time_from_previous": travel_time
+                })
+                
+                total_distance += distance
+                total_travel_time += travel_time
             
-            # 2点間の距離を計算
-            distance = calculate_distance(
-                current_point["lat"], current_point["lng"],
-                next_point["lat"], next_point["lng"]
-            )
-            
-            # 距離に応じて分割数を調整
-            steps = max(10, min(30, int(distance * 5)))
-            
-            for step in range(steps + 1):
-                t = step / steps
-                lat = current_point["lat"] + (next_point["lat"] - current_point["lat"]) * t
-                lng = current_point["lng"] + (next_point["lng"] - current_point["lng"]) * t
-                detailed_route.append({"lat": lat, "lng": lng})
-    
-    logging.info(f"Fallback calculation complete: total_distance={total_distance:.2f}km, travel_time={total_travel_time:.1f}min, visit_time={total_visit_time}min, total_time={total_time:.1f}min")
-    logging.info(f"Generated detailed route with {len(detailed_route)} points")
-    
-    return {
-        "total_distance": round(total_distance, 2),
-        "total_time": int(total_time),
-        "transport_mode": transport_mode,
-        "route_points": route_points,
-        "detailed_route": detailed_route,
-        "summary": {
-            "total_spots": len(spots),
-            "travel_time": int(total_travel_time),
-            "visit_time": total_visit_time,
-            "return_to_start": return_to_start
-        }
-    }
-
-# 画像アップロード・管理エンドポイント
-
-@app.post("/api/upload/image")
-async def upload_image(image: UploadFile = File(...)):
-    """画像をアップロードしてIDを返す"""
-    try:
-        # ファイル形式チェック
-        if not image.content_type or not image.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="画像ファイルのみアップロード可能です")
+            # 最後のスポットから出発地に戻る
+            if return_to_start:
+                last_spot = db_spots[-1]
+                distance = calculate_distance(
+                    last_spot.latitude, last_spot.longitude,
+                    start_lat, start_lng
+                )
+                travel_time = calculate_travel_time(distance, transport_mode)
+                
+                print(f"DEBUG: 最後のスポット({last_spot.name})から出発地への距離: {distance:.2f}km, 時間: {travel_time}分")
+                
+                route_points.append({
+                    "id": "return",
+                    "name": "出発地に戻る",
+                    "address": "出発地",
+                    "latitude": start_lat,
+                    "longitude": start_lng,
+                    "description": "出発地に戻りました",
+                    "plan": None,
+                    "visit_duration": 0,
+                    "distance_from_previous": distance,
+                    "travel_time_from_previous": travel_time
+                })
+                
+                total_distance += distance
+                total_travel_time += travel_time
         
-        # ファイルサイズチェック（5MB制限）
-        content = await image.read()
-        if len(content) > 5 * 1024 * 1024:  # 5MB
-            raise HTTPException(status_code=400, detail="ファイルサイズは5MB以下にしてください")
+        # 総滞在時間を計算
+        total_visit_time = sum(spot.get("visit_duration", 0) for spot in route_points)
         
-        # ユニークなファイル名を生成
-        file_extension = image.filename.split('.')[-1] if image.filename and '.' in image.filename else 'jpg'
-        image_id = f"{uuid.uuid4()}.{file_extension}"
-        file_path = UPLOAD_DIR / image_id
-        
-        # ファイルを保存
-        with open(file_path, "wb") as buffer:
-            buffer.write(content)
-        
-        logger.info(f"Image uploaded: {image_id}, size: {len(content)} bytes")
+        print(f"DEBUG: ルート生成完了 - 総距離: {total_distance:.2f}km, 総移動時間: {total_travel_time}分, 総滞在時間: {total_visit_time}分")
+        print(f"DEBUG: ルートポイント数: {len(route_points)}")
         
         return {
-            "success": True,
-            "image_id": image_id,
-            "url": f"/uploads/images/{image_id}"
+            "message": "ルートが生成されました",
+            "route_points": route_points,
+            "total_points": len(route_points),
+            "transport_mode": transport_mode,
+            "return_to_start": return_to_start,
+            "total_distance": round(total_distance, 2),
+            "total_travel_time": total_travel_time,
+            "total_visit_time": total_visit_time,
+            "total_duration": total_travel_time + total_visit_time
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Error uploading image: {e}")
-        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
+        raise HTTPException(status_code=500, detail=f"ルート生成中にエラーが発生しました: {str(e)}")
 
-@app.get("/api/images/{image_id}")
-async def get_image(image_id: str):
-    """画像IDから画像ファイルを取得"""
-    try:
-        file_path = UPLOAD_DIR / image_id
-        
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="画像が見つかりません")
-        
-        return FileResponse(
-            path=file_path,
-            media_type="image/*",
-            headers={"Cache-Control": "public, max-age=3600"}  # 1時間キャッシュ
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error serving image {image_id}: {e}")
-        raise HTTPException(status_code=500, detail="画像の取得に失敗しました")
 
-@app.delete("/api/images/{image_id}")
-async def delete_image(image_id: str):
-    """画像を削除"""
-    try:
-        file_path = UPLOAD_DIR / image_id
-        
-        if file_path.exists():
-            os.remove(file_path)
-            logger.info(f"Image deleted: {image_id}")
-        
-        return {"success": True, "message": "画像が削除されました"}
-        
-    except Exception as e:
-        logger.error(f"Error deleting image {image_id}: {e}")
-        raise HTTPException(status_code=500, detail="画像の削除に失敗しました")
-
-def calculate_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """2点間の距離を計算（km）"""
-    import math
-    
-    # ハバーサイン公式
-    R = 6371  # 地球の半径（km）
-    
-    lat1_rad = math.radians(lat1)
-    lat2_rad = math.radians(lat2)
-    delta_lat = math.radians(lat2 - lat1)
-    delta_lng = math.radians(lng2 - lng1)
-    
-    a = (math.sin(delta_lat / 2) ** 2 + 
-         math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng / 2) ** 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
-    return R * c
-
-# 選択リスト管理エンドポイント
-
-@app.get("/api/options/categories", response_model=List[OptionCategory])
-async def get_option_categories():
-    """全ての選択リストカテゴリを取得"""
-    try:
-        categories = await option_service.get_all_categories()
-        return categories
-    except Exception as e:
-        logger.error(f"Error getting option categories: {e}")
-        raise HTTPException(status_code=500, detail="選択リストカテゴリの取得に失敗しました")
-
-@app.get("/api/options/categories/{category_name}", response_model=OptionCategoryWithItems)
-async def get_option_category_with_items(category_name: str):
-    """カテゴリと項目を取得"""
-    try:
-        category = await option_service.get_category_with_items(category_name)
-        if not category:
-            raise HTTPException(status_code=404, detail="カテゴリが見つかりません")
-        return category
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting option category: {e}")
-        raise HTTPException(status_code=500, detail="カテゴリの取得に失敗しました")
-
-@app.post("/api/options/categories", response_model=OptionCategory)
-async def create_option_category(category_data: OptionCategoryCreate):
-    """選択リストカテゴリを作成"""
-    try:
-        category = await option_service.create_category(category_data)
-        return category
-    except Exception as e:
-        logger.error(f"Error creating option category: {e}")
-        raise HTTPException(status_code=500, detail="カテゴリの作成に失敗しました")
-
-@app.put("/api/options/categories/{category_name}", response_model=OptionCategory)
-async def update_option_category(category_name: str, category_data: OptionCategoryUpdate):
-    """選択リストカテゴリを更新"""
-    try:
-        category = await option_service.update_category(category_name, category_data)
-        if not category:
-            raise HTTPException(status_code=404, detail="カテゴリが見つかりません")
-        return category
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating option category: {e}")
-        raise HTTPException(status_code=500, detail="カテゴリの更新に失敗しました")
-
-@app.delete("/api/options/categories/{category_name}")
-async def delete_option_category(category_name: str):
-    """選択リストカテゴリを削除"""
-    try:
-        success = await option_service.delete_category(category_name)
-        if not success:
-            raise HTTPException(status_code=404, detail="カテゴリが見つかりません")
-        return {"success": True, "message": "カテゴリが削除されました"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting option category: {e}")
-        raise HTTPException(status_code=500, detail="カテゴリの削除に失敗しました")
-
-@app.get("/api/options/{category_name}/items", response_model=List[OptionItem])
-async def get_option_items(category_name: str):
-    """カテゴリの選択リスト項目を取得"""
-    try:
-        items = await option_service.get_items_by_category(category_name)
-        return items
-    except Exception as e:
-        logger.error(f"Error getting option items: {e}")
-        raise HTTPException(status_code=500, detail="選択リスト項目の取得に失敗しました")
-
-@app.post("/api/options/{category_name}/items", response_model=OptionItem)
-async def create_option_item(category_name: str, item_data: OptionItemCreate):
-    """選択リスト項目を作成"""
-    try:
-        item = await option_service.create_item(category_name, item_data)
-        return item
-    except Exception as e:
-        logger.error(f"Error creating option item: {e}")
-        raise HTTPException(status_code=500, detail="選択リスト項目の作成に失敗しました")
-
-@app.put("/api/options/items/{item_id}", response_model=OptionItem)
-async def update_option_item(item_id: str, item_data: OptionItemUpdate):
-    """選択リスト項目を更新"""
-    try:
-        item = await option_service.update_item(item_id, item_data)
-        if not item:
-            raise HTTPException(status_code=404, detail="項目が見つかりません")
-        return item
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating option item: {e}")
-        raise HTTPException(status_code=500, detail="選択リスト項目の更新に失敗しました")
-
-@app.delete("/api/options/items/{item_id}")
-async def delete_option_item(item_id: str):
-    """選択リスト項目を削除"""
-    try:
-        success = await option_service.delete_item(item_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="項目が見つかりません")
-        return {"success": True, "message": "項目が削除されました"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting option item: {e}")
-        raise HTTPException(status_code=500, detail="選択リスト項目の削除に失敗しました")
-
-@app.post("/api/options/{category_name}/items/reorder")
-async def reorder_option_items(category_name: str, item_orders: List[dict]):
-    """選択リスト項目の並び順を変更"""
-    try:
-        success = await option_service.reorder_items(category_name, item_orders)
-        if not success:
-            raise HTTPException(status_code=400, detail="並び順の変更に失敗しました")
-        return {"success": True, "message": "並び順が更新されました"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error reordering option items: {e}")
-        raise HTTPException(status_code=500, detail="並び順の変更に失敗しました")
+# アプリケーション起動時にデータベースを初期化
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+    print("練馬ワンダーランド API が起動しました")
 
 if __name__ == "__main__":
     import uvicorn

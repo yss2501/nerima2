@@ -18,7 +18,7 @@ export interface GeocodeResponse {
  * @returns 正規化された住所の配列
  */
 function normalizeJapaneseAddress(address: string): string[] {
-  const normalized: string[] = [];
+  const normalized = [];
   let baseAddress = address.trim();
 
   // 元の住所をそのまま追加
@@ -185,16 +185,16 @@ function calculateAddressRelevance(original: string, candidate: string): number 
   if (candidateLower.includes(originalLower)) score += 100;
 
   // 数字の一致をチェック
-  const originalNumbers = (original.match(/\d+/g) || []) as string[];
-  const candidateNumbers = (candidate.match(/\d+/g) || []) as string[];
+  const originalNumbers = original.match(/\d+/g) || [];
+  const candidateNumbers = candidate.match(/\d+/g) || [];
   
   originalNumbers.forEach(num => {
     if (candidateNumbers.includes(num)) score += 20;
   });
 
   // 漢字の一致をチェック
-  const originalKanji = (original.match(/[一-龯]+/g) || []) as string[];
-  const candidateKanji = (candidate.match(/[一-龯]+/g) || []) as string[];
+  const originalKanji = original.match(/[一-龯]+/g) || [];
+  const candidateKanji = candidate.match(/[一-龯]+/g) || [];
   
   originalKanji.forEach(kanji => {
     if (candidateKanji.some(ck => ck.includes(kanji))) score += 10;

@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { Spot, RouteInfo } from '@/lib/api';
-import { fetchOrsRoute, LatLng } from '@/lib/routing';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { Spot, RouteInfo, api } from '@/lib/api';
+import { LatLng, fetchOrsRoute } from '@/lib/routing';
 import StartLocationSelector from './StartLocationSelector';
+import RouteNavigation from './RouteNavigation';
+import { useRouter } from 'next/navigation';
 
 interface RouteMapProps {
   spots: Spot[];
@@ -12,6 +14,7 @@ interface RouteMapProps {
 }
 
 export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: RouteMapProps) {
+  const router = useRouter();
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [markers, setMarkers] = useState<any[]>([]);
@@ -19,7 +22,8 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
   const [isMapInitialized, setIsMapInitialized] = useState(false);
   
   // ルート関連の状態
-  const [selectedSpots, setSelectedSpots] = useState<Spot[]>([]);
+  // 手動選択されたスポット（プランが選択されていない場合のみ使用）
+  const [manuallySelectedSpots, setManuallySelectedSpots] = useState<Spot[]>([]);
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [startLocation, setStartLocation] = useState<{lat: number, lng: number, name: string} | null>(null);
   const [transportMode, setTransportMode] = useState<'walking' | 'cycling' | 'driving'>('walking');
@@ -27,12 +31,57 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [isMapClickMode, setIsMapClickMode] = useState(false);
   const [routeLayer, setRouteLayer] = useState<any>(null);
-
+  const [showNavigation, setShowNavigation] = useState(false);
+  
+  // プラン関連の状態
+  const [selectedPlan, setSelectedPlan] = useState<string>('');
+  const [availablePlans, setAvailablePlans] = useState<string[]>([]);
+  
   // 有効な位置情報を持つスポットのみをフィルタリング
   const validSpots = spots.filter(spot => spot.latitude && spot.longitude);
+  
+  // planSpotsをuseMemoで計算
+  const planSpots = useMemo(() => {
+    if (selectedPlan) {
+      return validSpots.filter(spot => spot.plan === selectedPlan);
+    }
+    return validSpots;
+  }, [selectedPlan, validSpots]);
+
+  // プラン一覧を取得
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const response = await api.spots.getPlans();
+        if (response.data && response.data.plans) {
+          setAvailablePlans(response.data.plans);
+        }
+      } catch (error) {
+        console.error('プラン一覧の取得に失敗しました:', error);
+        // フォールバック用のデフォルトプラン
+        setAvailablePlans(['観光', 'グルメ', 'ショッピング', 'レジャー', '文化体験']);
+      }
+    };
+    loadPlans();
+  }, []);
+
+  // プランが変更されたときに手動選択をクリア
+  useEffect(() => {
+    setManuallySelectedSpots([]);
+  }, [selectedPlan]);
+
+  // 選択されたスポットをuseMemoで計算（手動選択と自動選択を統合）
+  const selectedSpots = useMemo(() => {
+    if (selectedPlan && planSpots.length > 0) {
+      // プランが選択されている場合は、そのプランのスポットを自動選択
+      return planSpots;
+    }
+    // プランが選択されていない場合は、手動選択されたスポットのみ
+    return manuallySelectedSpots;
+  }, [selectedPlan, planSpots, manuallySelectedSpots]);
 
   useEffect(() => {
-    if (!mapRef.current || validSpots.length === 0 || isMapInitialized) return;
+    if (!mapRef.current || planSpots.length === 0 || isMapInitialized) return;
 
     const initMap = async () => {
       try {
@@ -93,8 +142,8 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         });
 
         // 地図の中心を計算
-        const lats = validSpots.map(spot => parseFloat(spot.latitude!));
-        const lngs = validSpots.map(spot => parseFloat(spot.longitude!));
+        const lats = planSpots.map(spot => parseFloat(spot.latitude!));
+        const lngs = planSpots.map(spot => parseFloat(spot.longitude!));
         
         const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
         const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
@@ -110,7 +159,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
 
         // マーカーを追加
         const newMarkers: any[] = [];
-        validSpots.forEach((spot) => {
+        planSpots.forEach((spot) => {
           const marker = L.default.marker([parseFloat(spot.latitude!), parseFloat(spot.longitude!)], {
             icon: customIcon
           })
@@ -184,7 +233,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
 
         // グローバル関数を設定（ポップアップ内のボタン用）
         (window as any).selectSpot = (spotId: string) => {
-          const spot = validSpots.find(s => s.id === spotId);
+          const spot = planSpots.find(s => s.id === spotId);
           if (spot) {
             handleSpotSelection(spot);
           }
@@ -215,13 +264,13 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         setIsMapInitialized(false);
       }
     };
-  }, [validSpots, isMapInitialized]);
+  }, [planSpots, isMapInitialized]);
 
   const handleSpotSelection = (spot: Spot) => {
-    if (selectedSpots.find(s => s.id === spot.id)) {
-      setSelectedSpots(selectedSpots.filter(s => s.id !== spot.id));
+    if (manuallySelectedSpots.find(s => s.id === spot.id)) {
+      setManuallySelectedSpots(manuallySelectedSpots.filter(s => s.id !== spot.id));
     } else {
-      setSelectedSpots([...selectedSpots, spot]);
+      setManuallySelectedSpots([...manuallySelectedSpots, spot]);
     }
   };
 
@@ -243,12 +292,25 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
 
       if (response.data) {
         // APIレスポンスの構造を確認
-        const routeData = response.data.data || response.data;
+        let routeData = response.data;
+        
+        // ネストされたdataプロパティがある場合の対応
+        if (response.data.data) {
+          routeData = response.data.data;
+        }
+        
+        console.log('Full Response:', response); // デバッグ用
         console.log('Route Data:', routeData); // デバッグ用
         console.log('Route Points:', routeData?.route_points); // デバッグ用
         console.log('Detailed Route:', routeData?.detailed_route); // デバッグ用
         
-        if (routeData && routeData.route_points) {
+        // ルートデータの検証を強化
+        if (routeData && (
+          routeData.route_points || 
+          routeData.detailed_route || 
+          routeData.spots ||
+          (Array.isArray(routeData) && routeData.length > 0)
+        )) {
           console.log('Route calculation details:');
           console.log('- Transport mode:', routeData.transport_mode);
           console.log('- Total distance:', routeData.total_distance, 'km');
@@ -259,10 +321,16 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
           
           setRouteInfo(routeData);
           onRouteGenerated?.(routeData);
-          await drawRouteOnMap(routeData);
+          
+          // セッションストレージにルート情報を保存
+          sessionStorage.setItem('routeInfo', JSON.stringify(routeData));
+          
+          // ルート生成成功後、次のページに遷移
+          router.push('/route-result');
         } else {
           console.error('Invalid route data structure:', routeData);
-          alert('ルートデータの形式が正しくありません。');
+          console.error('Response structure:', response);
+          alert(`ルートデータの形式が正しくありません。\n\nデータ構造:\n${JSON.stringify(routeData, null, 2)}`);
         }
       } else {
         console.error('No data in response:', response);
@@ -290,8 +358,22 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
       return;
     }
 
-    if (!route || !route.route_points || !Array.isArray(route.route_points)) {
-      console.error('Invalid route data:', route);
+    // ルートデータの検証を柔軟に
+    let routePoints = null;
+    
+    if (route?.route_points && Array.isArray(route.route_points)) {
+      routePoints = route.route_points;
+    } else if (route?.detailed_route && Array.isArray(route.detailed_route)) {
+      routePoints = route.detailed_route;
+    } else if (route?.spots && Array.isArray(route.spots)) {
+      routePoints = route.spots;
+    } else if (Array.isArray(route) && route.length > 0) {
+      routePoints = route;
+    }
+
+    if (!routePoints || routePoints.length === 0) {
+      console.error('No valid route points found:', route);
+      console.error('Available keys:', Object.keys(route || {}));
       return;
     }
 
@@ -319,8 +401,11 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
     } else {
       // フォールバック: ルートポイント間の直線
       routeCoordinates = route.route_points
-        .filter(point => point.lat && point.lng)
-        .map(point => [point.lat, point.lng]);
+        .filter(point => (point.latitude && point.longitude) || (point.lat && point.lng))
+        .map(point => [
+          point.latitude || point.lat, 
+          point.longitude || point.lng
+        ]);
       console.log('Using simplified route with', routeCoordinates.length, 'points');
       console.log('Route points used:', route.route_points);
     }
@@ -342,12 +427,13 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
       setRouteLayer(null);
     }
 
-    // ORSを使用して道なりのルートを取得
+    // 実際の道路に沿ったルートを描画
     try {
       const waypoints: LatLng[] = routeCoordinates.map(coord => [coord[0], coord[1]]);
       const profile = transportMode === 'walking' ? 'foot-walking' : 
                      transportMode === 'cycling' ? 'cycling-regular' : 'driving-car';
       
+      console.log('Fetching route from OSRM...', waypoints);
       const geojson = await fetchOrsRoute(waypoints, profile);
       
       // GeoJSONをそのまま描画
@@ -366,8 +452,9 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
       if (bounds.isValid()) {
         mapInstance.fitBounds(bounds, { padding: [20, 20] });
       }
+      
     } catch (error) {
-      console.error('ORS routing failed, using fallback:', error);
+      console.warn('OSRM routing failed, using straight lines:', error);
       
       // フォールバック: 直線ポリライン
       const routeLine = L.polyline(routeCoordinates, {
@@ -406,7 +493,7 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
     });
 
     if (route.route_points[0]) {
-      L.marker([route.route_points[0].lat, route.route_points[0].lng], {
+      L.marker([route.route_points[0].latitude || route.route_points[0].lat, route.route_points[0].longitude || route.route_points[0].lng], {
         icon: startIcon
       }).addTo(mapInstance).bindPopup('出発地');
     }
@@ -473,7 +560,26 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
           </div>
         )}
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+
+          {/* プラン選択 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              プラン
+            </label>
+            <select
+              value={selectedPlan}
+              onChange={(e) => setSelectedPlan(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="">すべてのプラン</option>
+              {availablePlans.map((plan) => (
+                <option key={plan} value={plan}>
+                  {plan}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* 移動手段選択 */}
           <div>
@@ -483,11 +589,11 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
             <select
               value={transportMode}
               onChange={(e) => setTransportMode(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="walking">🚶 徒歩</option>
               <option value="cycling">🚴 自転車</option>
-              <option value="driving">🚕 タクシー</option>
+              <option value="driving">🚕 電車</option>
             </select>
           </div>
 
@@ -521,31 +627,32 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
             >
               {isCalculatingRoute ? '計算中...' : '🗺️ ルート生成'}
             </button>
+            
+            {/* ナビゲーションボタン */}
+            {routeInfo && (
+              <button
+                onClick={() => setShowNavigation(true)}
+                className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors mt-2"
+              >
+                🧭 ルート案内開始
+              </button>
+            )}
           </div>
         </div>
 
-        {/* 選択されたスポット一覧 */}
-        {selectedSpots.length > 0 && (
-          <div className="mt-4">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-              選択されたスポット ({selectedSpots.length}件)
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {selectedSpots.map((spot, index) => (
-                <div
-                  key={spot.id}
-                  className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
-                >
-                  <span className="mr-2">#{index + 1}</span>
-                  {spot.name}
-                  <button
-                    onClick={() => handleSpotSelection(spot)}
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+
+        {/* プラン情報表示 */}
+        {selectedPlan && (
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  選択プラン:
+                </span>
+                <span className="ml-2 text-sm text-blue-700 dark:text-blue-300">
+                  {selectedPlan}
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -553,123 +660,31 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
         {/* ルート情報表示 */}
         {routeInfo && (
           <div className="mt-4 p-4 bg-green-50 dark:bg-green-900 rounded-lg">
-            <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">
-              🗺️ ルート情報
-            </h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-green-600 dark:text-green-400">総距離:</span>
                 <span className="ml-2 font-medium">{routeInfo.total_distance}km</span>
               </div>
               <div>
                 <span className="text-green-600 dark:text-green-400">総時間:</span>
-                <span className="ml-2 font-medium">{formatDuration(routeInfo.total_time)}</span>
+                <span className="ml-2 font-medium">{formatDuration(routeInfo.total_duration || 0)}</span>
               </div>
               <div>
                 <span className="text-green-600 dark:text-green-400">移動手段:</span>
-                <span className="ml-2 font-medium">{getTransportModeText(routeInfo.transport_mode)}</span>
-              </div>
-              <div>
-                <span className="text-green-600 dark:text-green-400">訪問スポット:</span>
-                <span className="ml-2 font-medium">{routeInfo.summary.total_spots}件</span>
+                <span className="ml-2 font-medium">{getTransportModeText(transportMode)}</span>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* 地図コンテナ */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
-        {isMapClickMode && (
-          <div className="mb-3 p-3 bg-purple-100 dark:bg-purple-900 rounded-lg border-2 border-purple-300 dark:border-purple-600">
-            <div className="flex items-center justify-center text-purple-800 dark:text-purple-200">
-              <div className="animate-pulse mr-2">📍</div>
-              <span className="font-medium">地図上をクリックして出発地を設定してください</span>
-            </div>
-          </div>
-        )}
-        <div 
-          ref={mapRef} 
-          className={`w-full h-[500px] rounded-lg transition-all duration-300 ${
-            isMapClickMode ? 'cursor-crosshair' : 'cursor-grab'
-          }`}
-          style={{ zIndex: 1 }}
+      {/* ルート案内モーダル */}
+      {showNavigation && routeInfo && (
+        <RouteNavigation
+          routePoints={routeInfo.route_points}
+          onClose={() => setShowNavigation(false)}
         />
-      </div>
-
-      {/* 観光スポット一覧 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-          観光スポット一覧 ({validSpots.length}件)
-        </h3>
-        
-        {validSpots.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {validSpots.map((spot) => {
-              const isSelected = selectedSpots.find(s => s.id === spot.id);
-              return (
-                <div
-                  key={spot.id}
-                  className={`rounded-lg p-4 cursor-pointer transition-colors ${
-                    isSelected 
-                      ? 'bg-blue-100 dark:bg-blue-900 border-2 border-blue-500' 
-                      : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
-                  }`}
-                  onClick={() => handleSpotSelection(spot)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-gray-900 dark:text-white">
-                      {spot.name}
-                    </h4>
-                    {isSelected && (
-                      <span className="text-blue-600 dark:text-blue-400 text-sm">
-                        ✓ 選択済み
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <p className="text-gray-600 dark:text-gray-400">
-                      📍 {spot.address}
-                    </p>
-                    
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        ⏱️ {formatDuration(spot.visit_duration)}
-                      </span>
-                      {spot.price_range && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                          {spot.price_range === 'free' ? '無料' : 
-                           spot.price_range === 'low' ? '安価' : 
-                           spot.price_range === 'medium' ? '中程度' : '高級'}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {spot.rating && (
-                      <p className="text-yellow-600 font-medium">
-                        ★ {parseFloat(spot.rating).toFixed(1)}
-                      </p>
-                    )}
-                    
-                    {spot.description && (
-                      <p className="text-gray-700 dark:text-gray-300 text-xs line-clamp-2">
-                        {spot.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-600 dark:text-gray-400">
-              位置情報が設定されている観光スポットがありません
-            </p>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -25,6 +25,10 @@ class SpotBase(BaseModel):
     accessibility: Optional[List[str]] = Field(None, description="アクセシビリティ")
     best_season: Optional[List[str]] = Field(None, description="ベストシーズン")
     weather_dependent: bool = Field(False, description="天候依存")
+    
+    # CSVアップロード用
+    plan: Optional[str] = Field(None, description="プラン・目的")
+    image_url: Optional[str] = Field(None, description="画像URL")
 
 class SpotCreate(SpotBase):
     """観光スポット作成用モデル"""
@@ -48,6 +52,7 @@ class SpotUpdate(BaseModel):
     accessibility: Optional[List[str]] = None
     best_season: Optional[List[str]] = None
     weather_dependent: Optional[bool] = None
+    plan: Optional[str] = None
 
 class Spot(SpotBase):
     """観光スポット完全モデル"""
@@ -58,3 +63,22 @@ class Spot(SpotBase):
 
     class Config:
         from_attributes = True
+
+class SpotResponse(BaseModel):
+    """観光スポットレスポンス用モデル"""
+    id: int
+    name: str
+    address: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    description: Optional[str] = None
+    plan: Optional[str] = None
+    image_url: Optional[str] = None
+    visit_duration: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        # mood フィールドを明示的に除外
+        exclude = {"mood"}

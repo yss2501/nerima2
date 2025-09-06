@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import SpotManager from './SpotManager';
 import OptionsManager from './OptionsManager';
 
 interface BackendStatus {
@@ -164,7 +163,28 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === 'spots' && <SpotManager />}
+        {activeTab === 'spots' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">スポット管理</h2>
+            <p className="text-gray-600 mb-6">
+              スポットの管理は専用ページで行えます。
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => router.push('/spots')}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors duration-200"
+              >
+                📍 スポット一覧
+              </button>
+              <button
+                onClick={() => router.push('/csv')}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors duration-200"
+              >
+                📄 CSV管理
+              </button>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'options' && <OptionsManager />}
 

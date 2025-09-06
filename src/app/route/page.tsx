@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import { api, Spot, RouteInfo } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import RouteNavigation from '@/components/RouteNavigation';
+import CommonHeader from '@/components/CommonHeader';
+import QRCodeDisplay from '@/components/QRCodeDisplay';
 
 // ルート地図コンポーネントを動的インポート
 const RouteMap = dynamic(() => import('@/components/RouteMap'), {
@@ -23,6 +27,9 @@ export default function RoutePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+  const [showNavigation, setShowNavigation] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     loadSpots();
@@ -33,6 +40,21 @@ export default function RoutePage() {
       setLoading(true);
       setError(null);
       
+      // URLパラメータからCSVスポットデータを取得
+      const csvSpotsParam = searchParams.get('csvSpots');
+      if (csvSpotsParam) {
+        try {
+          const csvSpots = JSON.parse(decodeURIComponent(csvSpotsParam));
+          console.log('CSV spots loaded:', csvSpots);
+          setSpots(csvSpots);
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.error('Failed to parse CSV spots:', e);
+        }
+      }
+      
+      // CSVスポットがない場合はSupabaseから取得
       const response = await api.spots.getAll();
       if (response.error) {
         setError(response.error);
@@ -53,6 +75,27 @@ export default function RoutePage() {
   const handleRouteGenerated = (route: RouteInfo) => {
     setRouteInfo(route);
     console.log('Route generated:', route);
+  };
+
+  // QRコード用のルートデータを生成
+  const generateRouteData = () => {
+    if (!routeInfo) return '';
+    
+    const routeData = {
+      title: '練馬ワンダーランド ルート',
+      spots: routeInfo.route_points.map(point => ({
+        name: point.name,
+        lat: point.lat,
+        lng: point.lng,
+        visit_duration: point.visit_duration
+      })),
+      total_distance: routeInfo.total_distance,
+      total_time: routeInfo.total_time,
+      transport_mode: routeInfo.transport_mode,
+      created_at: new Date().toISOString()
+    };
+    
+    return JSON.stringify(routeData);
   };
 
   if (loading) {
@@ -109,6 +152,9 @@ export default function RoutePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-500 via-emerald-500 to-green-700 relative overflow-hidden">
+      {/* ヘッダー */}
+      <CommonHeader />
+      
       {/* 背景装飾 */}
       <div className="absolute inset-0 bg-black/5"></div>
       <div className="absolute top-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
@@ -116,61 +162,11 @@ export default function RoutePage() {
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-2xl"></div>
 
       <div className="relative z-10 min-h-screen">
-        {/* ナビゲーションバー */}
-        <nav className="bg-white/10 backdrop-blur-md border-b border-white/20 px-6 py-4">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <Link href="/" className="text-white font-bold text-xl hover:text-white/80 transition-colors">
-              🌱 練馬ワンダーランド
-            </Link>
-            <div className="flex gap-4">
-              <Link href="/admin" className="text-white/80 hover:text-white transition-colors">
-                ⚙️ 管理
-              </Link>
-              <Link href="/options" className="text-white/80 hover:text-white transition-colors">
-                🗂️ 設定
-              </Link>
-            </div>
-          </div>
-        </nav>
-
         <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* ヘッダー */}
-          <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
-              🌱 練馬区観光
-              <span className="block bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
-                ルート生成
-              </span>
-            </h1>
-            <p className="text-xl text-white/90 mb-8 leading-relaxed max-w-3xl mx-auto">
-              練馬区内の出発地を設定し、訪問したいスポットを選択して<br className="hidden md:block"/>
-              あなただけの練馬区観光コースを生成しましょう
-            </p>
-            
-            {/* 統計情報 */}
-            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl px-6 py-4 border border-white/20">
-                <div className="text-2xl font-bold text-white">{spots.length}</div>
-                <div className="text-white/80 text-sm">練馬スポット</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl px-6 py-4 border border-white/20">
-                <div className="text-2xl font-bold text-white">3</div>
-                <div className="text-white/80 text-sm">移動手段</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl px-6 py-4 border border-white/20">
-                <div className="text-2xl font-bold text-white">∞</div>
-                <div className="text-white/80 text-sm">組み合わせ</div>
-              </div>
-            </div>
-          </div>
 
           {/* メイン地図コンテナ */}
           <div className="animate-slide-up mb-8">
             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 shadow-2xl">
-              <h2 className="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
-                <span className="text-3xl">🎯</span>
-                ルート設定
-              </h2>
               <RouteMap
                 spots={spots}
                 onSpotClick={handleSpotClick}
@@ -183,60 +179,45 @@ export default function RoutePage() {
           {routeInfo && (
             <div className="animate-bounce-in">
               <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 shadow-2xl">
-                <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
-                  <span className="text-4xl">📋</span>
-                  生成されたコース詳細
-                </h2>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* コース概要 */}
+                <div className="space-y-6">
+                  {/* ルート概要 */}
                   <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-                    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                      <span className="text-2xl">📊</span>
-                      コース概要
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                      📊 ルート概要
                     </h3>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-white/10 rounded-xl">
-                        <span className="text-white/80 flex items-center gap-2">
-                          <span>📏</span> 総距離:
-                        </span>
-                        <span className="font-bold text-yellow-300">{routeInfo.total_distance}km</span>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                      <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
+                        <span className="text-white text-sm mb-1">📏 総距離</span>
+                        <span className="font-bold text-white text-lg">{routeInfo.total_distance}km</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white/10 rounded-xl">
-                        <span className="text-white/80 flex items-center gap-2">
-                          <span>⏱️</span> 総時間:
-                        </span>
-                        <span className="font-bold text-green-300">
-                          {Math.floor(routeInfo.total_time / 60)}時間{routeInfo.total_time % 60}分
+                      <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
+                        <span className="text-white text-sm mb-1">⏱️ 総時間</span>
+                        <span className="font-bold text-white text-lg">
+                          {Math.floor((routeInfo.total_duration || 0) / 60)}時間{(routeInfo.total_duration || 0) % 60}分
                         </span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white/10 rounded-xl">
-                        <span className="text-white/80 flex items-center gap-2">
-                          <span>🚶</span> 移動時間:
-                        </span>
-                        <span className="font-bold text-blue-300">
-                          {Math.floor(routeInfo.summary.travel_time / 60)}時間{routeInfo.summary.travel_time % 60}分
+                      <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
+                        <span className="text-white text-sm mb-1">🚶 移動時間</span>
+                        <span className="font-bold text-white text-lg">
+                          {Math.floor((routeInfo.total_travel_time || 0) / 60)}時間{(routeInfo.total_travel_time || 0) % 60}分
                         </span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white/10 rounded-xl">
-                        <span className="text-white/80 flex items-center gap-2">
-                          <span>🏛️</span> 滞在時間:
-                        </span>
-                        <span className="font-bold text-purple-300">
-                          {Math.floor(routeInfo.summary.visit_time / 60)}時間{routeInfo.summary.visit_time % 60}分
+                      <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
+                        <span className="text-white text-sm mb-1">🏛️ 滞在時間</span>
+                        <span className="font-bold text-white text-lg">
+                          {Math.floor((routeInfo.total_visit_time || 0) / 60)}時間{(routeInfo.total_visit_time || 0) % 60}分
                         </span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white/10 rounded-xl">
-                        <span className="text-white/80 flex items-center gap-2">
-                          <span>📍</span> 訪問スポット:
+                      <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
+                        <span className="text-white text-sm mb-1">📍 訪問スポット</span>
+                        <span className="font-bold text-white text-lg">
+                          {Math.max(0, (routeInfo.route_points?.length || 0) - 2)}件
                         </span>
-                        <span className="font-bold text-orange-300">{routeInfo.summary.total_spots}件</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white/10 rounded-xl">
-                        <span className="text-white/80 flex items-center gap-2">
-                          <span>🚀</span> 移動手段:
-                        </span>
-                        <span className="font-bold text-pink-300">
+                      <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
+                        <span className="text-white text-sm mb-1">🚀 移動手段</span>
+                        <span className="font-bold text-white text-sm">
                           {routeInfo.transport_mode === 'walking' ? '🚶 徒歩' :
                            routeInfo.transport_mode === 'cycling' ? '🚴 自転車' : '🚕 タクシー'}
                         </span>
@@ -246,9 +227,8 @@ export default function RoutePage() {
 
                   {/* ルート詳細 */}
                   <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-                    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                      <span className="text-2xl">🗺️</span>
-                      ルート詳細
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                      📋 ルート詳細
                     </h3>
                     <div className="space-y-4 max-h-96 overflow-y-auto">
                       {routeInfo.route_points.map((point, index) => (
@@ -273,9 +253,14 @@ export default function RoutePage() {
                                       <span>⏰</span> 滞在時間: {Math.floor(point.visit_duration / 60)}時間{point.visit_duration % 60}分
                                     </p>
                                   )}
-                                  {index > 0 && (
+                                  {index > 0 && point.distance_from_previous && (
                                     <p className="flex items-center gap-2">
                                       <span>📏</span> 距離: {point.distance_from_previous.toFixed(2)}km
+                                    </p>
+                                  )}
+                                  {index > 0 && point.travel_time_from_previous && (
+                                    <p className="flex items-center gap-2">
+                                      <span>🚶</span> 移動時間: {Math.floor(point.travel_time_from_previous / 60)}時間{point.travel_time_from_previous % 60}分
                                     </p>
                                   )}
                                 </div>
@@ -304,6 +289,12 @@ export default function RoutePage() {
                 {/* アクションボタン */}
                 <div className="mt-8 flex flex-wrap gap-4 justify-center">
                   <button
+                    onClick={() => setShowNavigation(true)}
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center gap-3"
+                  >
+                    🧭 ルート案内開始
+                  </button>
+                  <button
                     onClick={() => {
                       alert('PDF出力機能は今後実装予定です');
                     }}
@@ -312,12 +303,10 @@ export default function RoutePage() {
                     📄 PDFで出力
                   </button>
                   <button
-                    onClick={() => {
-                      alert('共有機能は今後実装予定です');
-                    }}
+                    onClick={() => setShowQRCode(true)}
                     className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center gap-3"
                   >
-                    📤 ルートを共有
+                    📱 QRコードで共有
                   </button>
                   <button
                     onClick={() => {
@@ -333,6 +322,61 @@ export default function RoutePage() {
           )}
         </div>
       </div>
+
+      {/* ルート案内モーダル */}
+      {showNavigation && routeInfo && (
+        <RouteNavigation
+          routePoints={routeInfo.route_points}
+          onClose={() => setShowNavigation(false)}
+        />
+      )}
+
+      {/* QRコードモーダル */}
+      {showQRCode && routeInfo && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                📱 QRコードで共有
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                このQRコードをスキャンしてルートを共有できます
+              </p>
+              
+              <QRCodeDisplay 
+                data={generateRouteData()} 
+                routeInfo={routeInfo}
+                size={250}
+                className="mb-6"
+              />
+              
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => setShowQRCode(false)}
+                  className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                >
+                  閉じる
+                </button>
+                <button
+                  onClick={() => {
+                    // QRコードをダウンロード
+                    const canvas = document.querySelector('canvas');
+                    if (canvas) {
+                      const link = document.createElement('a');
+                      link.download = 'nerima-route-qr.png';
+                      link.href = canvas.toDataURL();
+                      link.click();
+                    }
+                  }}
+                  className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                >
+                  📥 ダウンロード
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

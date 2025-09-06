@@ -11,7 +11,42 @@ export default function StartLocationSelector({ onLocationSelect, onMapClick }: 
   const [locationInput, setLocationInput] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedMethod, setSelectedMethod] = useState<'current' | 'search' | 'map'>('current');
+  const [selectedMethod, setSelectedMethod] = useState<'station' | 'search'>('station');
+  const [selectedStation, setSelectedStation] = useState<'nerima' | 'toshimaen'>('nerima');
+
+  // 練馬駅の座標（世界測地系）
+  const nerimaStation = {
+    lat: 35.737853,
+    lng: 139.654199,
+    name: '練馬駅'
+  };
+
+  // 豊島園駅の座標（世界測地系）
+  const toshimaenStation = {
+    lat: 35.7421,
+    lng: 139.6480,
+    name: '豊島園駅'
+  };
+
+  // 練馬駅を選択
+  const selectNerimaStation = () => {
+    onLocationSelect(nerimaStation);
+  };
+
+  // 豊島園駅を選択
+  const selectToshimaenStation = () => {
+    onLocationSelect(toshimaenStation);
+  };
+
+  // 現在選択されている駅を取得
+  const getCurrentStation = () => {
+    return selectedStation === 'nerima' ? nerimaStation : toshimaenStation;
+  };
+
+  // コンポーネントマウント時に練馬駅を自動選択
+  useEffect(() => {
+    selectNerimaStation();
+  }, []);
 
   // 現在地を取得
   const getCurrentLocation = () => {
@@ -69,14 +104,6 @@ export default function StartLocationSelector({ onLocationSelect, onMapClick }: 
     setSearchResults([]);
   };
 
-  // 地図クリックモードを有効化
-  const enableMapClickMode = () => {
-    setSelectedMethod('map');
-    if (onMapClick) {
-      // 地図クリックイベントを有効化するためのコールバック
-      onMapClick(0, 0); // ダミー値、実際の処理は親コンポーネントで行う
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -85,20 +112,20 @@ export default function StartLocationSelector({ onLocationSelect, onMapClick }: 
       </h4>
 
       {/* 設定方法選択 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
         <button
-          onClick={() => setSelectedMethod('current')}
+          onClick={() => setSelectedMethod('station')}
           className={`p-3 rounded-lg border-2 transition-colors ${
-            selectedMethod === 'current'
+            selectedMethod === 'station'
               ? 'border-blue-500 bg-blue-50 dark:bg-blue-900'
               : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
           }`}
         >
           <div className="text-center">
-            <div className="text-2xl mb-2">📍</div>
-            <div className="font-medium text-sm">現在地</div>
+            <div className="text-2xl mb-2">🚉</div>
+            <div className="font-medium text-sm">駅を選択</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              GPSで現在地を取得
+              練馬駅・豊島園駅
             </div>
           </div>
         </button>
@@ -119,38 +146,110 @@ export default function StartLocationSelector({ onLocationSelect, onMapClick }: 
             </div>
           </div>
         </button>
-
-        <button
-          onClick={() => setSelectedMethod('map')}
-          className={`p-3 rounded-lg border-2 transition-colors ${
-            selectedMethod === 'map'
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900'
-              : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
-          }`}
-        >
-          <div className="text-center">
-            <div className="text-2xl mb-2">🗺️</div>
-            <div className="font-medium text-sm">地図クリック</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              地図上で直接選択
-            </div>
-          </div>
-        </button>
       </div>
 
-      {/* 現在地設定 */}
-      {selectedMethod === 'current' && (
+      {/* 駅選択 */}
+      {selectedMethod === 'station' && (
         <div className="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-            現在地を出発地として設定します。位置情報の許可が必要です。
-          </p>
-          <button
-            onClick={getCurrentLocation}
-            disabled={isSearching}
-            className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {isSearching ? '位置情報を取得中...' : '📍 現在地を設定'}
-          </button>
+          {/* 駅選択ボタン */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <button
+              onClick={() => {
+                setSelectedStation('nerima');
+                selectNerimaStation();
+              }}
+              className={`p-3 rounded-lg border-2 transition-colors ${
+                selectedStation === 'nerima'
+                  ? 'border-blue-600 bg-blue-100 dark:bg-blue-800 shadow-lg'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+              }`}
+            >
+              <div className="text-center">
+                <div className="text-3xl mb-2">🚉</div>
+                <div className={`font-semibold ${
+                  selectedStation === 'nerima' 
+                    ? 'text-blue-800 dark:text-blue-200' 
+                    : 'text-gray-900 dark:text-white'
+                }`}>
+                  練馬駅
+                  {selectedStation === 'nerima' && (
+                    <span className="ml-2 text-sm">✓</span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  練馬区の中心駅
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setSelectedStation('toshimaen');
+                selectToshimaenStation();
+              }}
+              className={`p-3 rounded-lg border-2 transition-colors ${
+                selectedStation === 'toshimaen'
+                  ? 'border-blue-600 bg-blue-100 dark:bg-blue-800 shadow-lg'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+              }`}
+            >
+              <div className="text-center">
+                <div className="text-3xl mb-2">🎢</div>
+                <div className={`font-semibold ${
+                  selectedStation === 'toshimaen' 
+                    ? 'text-blue-800 dark:text-blue-200' 
+                    : 'text-gray-900 dark:text-white'
+                }`}>
+                  豊島園駅
+                  {selectedStation === 'toshimaen' && (
+                    <span className="ml-2 text-sm">✓</span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  西武鉄道
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* 選択された駅の詳細情報 */}
+          <div className="text-center">
+            <h5 className="font-semibold text-lg text-gray-900 dark:text-white mb-2">
+              {getCurrentStation().name}
+            </h5>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {selectedStation === 'nerima' 
+                ? '練馬区の中心駅として設定されています' 
+                : '西武鉄道の駅として設定されています'}
+            </p>
+            
+            {/* 現在選択中の駅を強調表示 */}
+            <div className="mb-4 p-3 bg-blue-100 dark:bg-blue-800 rounded-lg border-2 border-blue-300 dark:border-blue-600">
+              <div className="flex items-center justify-center gap-2">
+                <div className="text-2xl">
+                  {selectedStation === 'nerima' ? '🚉' : '🎢'}
+                </div>
+                <div>
+                  <div className="font-bold text-blue-800 dark:text-blue-200">
+                    現在選択中: {getCurrentStation().name}
+                  </div>
+                  <div className="text-xs text-blue-600 dark:text-blue-300">
+                    緯度: {getCurrentStation().lat}° 経度: {getCurrentStation().lng}°
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+          
+          {/* 座標情報表示 */}
+          <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+              <div>緯度: {getCurrentStation().lat}度</div>
+              <div>経度: {getCurrentStation().lng}度</div>
+              <div>（世界測地系）</div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -197,24 +296,6 @@ export default function StartLocationSelector({ onLocationSelect, onMapClick }: 
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {/* 地図クリック */}
-      {selectedMethod === 'map' && (
-        <div className="p-4 bg-purple-50 dark:bg-purple-900 rounded-lg">
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-            地図上をクリックして出発地を設定してください。地図が表示されたら、任意の場所をクリックしてください。
-          </p>
-          <div className="flex items-center justify-center p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-purple-300 dark:border-purple-600">
-            <div className="text-center">
-              <div className="text-3xl mb-2">🗺️</div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                地図上でクリックして<br />
-                出発地を設定してください
-              </p>
-            </div>
-          </div>
         </div>
       )}
     </div>
