@@ -19,6 +19,7 @@ const CustomMapPin = dynamic(() => import('@/components/CustomMapPin'), {
 });
 
 function SpotsPageContent() {
+  // State management for spots page
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
