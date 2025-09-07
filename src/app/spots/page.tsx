@@ -31,7 +31,10 @@ function SpotsPageContent() {
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    loadSpots();
+    // クライアントサイドでのみ実行
+    if (typeof window !== 'undefined') {
+      loadSpots();
+    }
   }, []);
 
   const loadSpots = async () => {
@@ -40,6 +43,11 @@ function SpotsPageContent() {
       setError(null);
       
       // URLパラメータから編集モードを取得
+      if (typeof window === 'undefined') {
+        setLoading(false);
+        return;
+      }
+      
       const urlParams = new URLSearchParams(window.location.search);
       const editMode = urlParams.get('edit') === 'true';
       setIsEditMode(editMode);

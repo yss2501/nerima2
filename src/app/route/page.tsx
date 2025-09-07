@@ -29,7 +29,10 @@ function RoutePageContent() {
   const [showNavigation, setShowNavigation] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   useEffect(() => {
-    loadSpots();
+    // クライアントサイドでのみ実行
+    if (typeof window !== 'undefined') {
+      loadSpots();
+    }
   }, []);
 
   const loadSpots = async () => {
@@ -38,6 +41,11 @@ function RoutePageContent() {
       setError(null);
       
       // URLパラメータからCSVスポットデータを取得
+      if (typeof window === 'undefined') {
+        setLoading(false);
+        return;
+      }
+      
       const urlParams = new URLSearchParams(window.location.search);
       const csvSpotsParam = urlParams.get('csvSpots');
       if (csvSpotsParam) {
