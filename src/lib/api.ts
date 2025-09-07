@@ -218,6 +218,7 @@ export interface RouteSummary {
   total_spots: number;
   travel_time: number;
   visit_time: number;
+  total_distance: number;
   return_to_start: boolean;
 }
 
