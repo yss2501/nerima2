@@ -314,10 +314,11 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
           console.log('Route calculation details:');
           console.log('- Transport mode:', (routeData as any).transport_mode);
           console.log('- Total distance:', (routeData as any).total_distance, 'km');
-          console.log('- Total time:', (routeData as any).total_duration, 'minutes');
-          console.log('- Travel time:', (routeData as any).total_travel_time, 'minutes');
-          console.log('- Visit time:', (routeData as any).total_visit_time, 'minutes');
+          console.log('- Total time (total_duration):', (routeData as any).total_duration, 'minutes');
+          console.log('- Travel time (total_travel_time):', (routeData as any).total_travel_time, 'minutes');
+          console.log('- Visit time (total_visit_time):', (routeData as any).total_visit_time, 'minutes');
           console.log('- Route points:', (routeData as any).route_points);
+          console.log('- Raw routeData keys:', Object.keys(routeData as any));
           
           // バックエンドのレスポンス構造をフロントエンドの期待する構造に変換
           const processedRouteData = {
@@ -336,10 +337,14 @@ export default function RouteMap({ spots, onSpotClick, onRouteGenerated }: Route
               visit_time: (routeData as any).total_visit_time || 0,
               total_distance: (routeData as any).total_distance || 0
             },
-            total_time: (routeData as any).total_duration || 0
+            total_time: (routeData as any).total_duration || 0,
+            total_distance: (routeData as any).total_distance || 0
           };
           
           console.log('Processed Route Data:', processedRouteData);
+          console.log('Processed summary:', processedRouteData.summary);
+          console.log('Processed total_time:', processedRouteData.total_time);
+          console.log('Processed total_distance:', processedRouteData.total_distance);
           
           setRouteInfo(processedRouteData as any);
           onRouteGenerated?.(processedRouteData as any);

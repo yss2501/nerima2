@@ -195,24 +195,35 @@ function RoutePageContent() {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                       <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
                         <span className="text-white text-sm mb-1">📏 総距離</span>
-                        <span className="font-bold text-white text-lg">{routeInfo.summary?.total_distance || routeInfo.total_distance || 0}km</span>
+                        <span className="font-bold text-white text-lg">
+                          {(routeInfo.summary?.total_distance || routeInfo.total_distance || 0).toFixed(1)}km
+                        </span>
                       </div>
                       <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
                         <span className="text-white text-sm mb-1">⏱️ 総時間</span>
                         <span className="font-bold text-white text-lg">
-                          {Math.floor((routeInfo.total_time || 0) / 60)}時間{(routeInfo.total_time || 0) % 60}分
+                          {(() => {
+                            const totalTime = routeInfo.total_time || routeInfo.summary?.travel_time + routeInfo.summary?.visit_time || 0;
+                            return `${Math.floor(totalTime / 60)}時間${totalTime % 60}分`;
+                          })()}
                         </span>
                       </div>
                       <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
                         <span className="text-white text-sm mb-1">🚶 移動時間</span>
                         <span className="font-bold text-white text-lg">
-                          {Math.floor((routeInfo.summary?.travel_time || 0) / 60)}時間{(routeInfo.summary?.travel_time || 0) % 60}分
+                          {(() => {
+                            const travelTime = routeInfo.summary?.travel_time || 0;
+                            return `${Math.floor(travelTime / 60)}時間${travelTime % 60}分`;
+                          })()}
                         </span>
                       </div>
                       <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
                         <span className="text-white text-sm mb-1">🏛️ 滞在時間</span>
                         <span className="font-bold text-white text-lg">
-                          {Math.floor((routeInfo.summary?.visit_time || 0) / 60)}時間{(routeInfo.summary?.visit_time || 0) % 60}分
+                          {(() => {
+                            const visitTime = routeInfo.summary?.visit_time || 0;
+                            return `${Math.floor(visitTime / 60)}時間${visitTime % 60}分`;
+                          })()}
                         </span>
                       </div>
                       <div className="flex flex-col items-center p-3 bg-white/10 rounded-xl">
