@@ -127,6 +127,24 @@ export default function RouteNavigation({ routePoints, onClose }: RouteNavigatio
 
   const currentPoint = routePoints[currentStep];
   const nextPoint = routePoints[currentStep + 1];
+
+  // currentPointが存在しない場合は早期リターン
+  if (!currentPoint) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">エラー</h2>
+          <p className="text-gray-600 mb-4">ルートポイントが見つかりません。</p>
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
+          >
+            閉じる
+          </button>
+        </div>
+      </div>
+    );
+  }
   const direction = currentLocation ? calculateDirection(currentLocation, currentPoint) : '';
 
   return (
@@ -159,13 +177,13 @@ export default function RouteNavigation({ routePoints, onClose }: RouteNavigatio
         </div>
 
         {/* 距離・時間情報 */}
-        {currentPoint.distance_from_previous && currentPoint.distance_from_previous > 0 && (
+        {currentPoint.distance_from_previous !== undefined && currentPoint.distance_from_previous > 0 && (
           <div className="bg-green-50 rounded-lg p-3 mb-4">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">移動距離:</span>
               <span className="font-medium text-green-700">{getDistanceText(currentPoint.distance_from_previous)}</span>
             </div>
-            {currentPoint.travel_time && (
+            {currentPoint.travel_time && currentPoint.travel_time > 0 && (
               <div className="flex justify-between text-sm mt-1">
                 <span className="text-gray-600">移動時間:</span>
                 <span className="font-medium text-green-700">{getTimeText(currentPoint.travel_time)}</span>
@@ -175,7 +193,7 @@ export default function RouteNavigation({ routePoints, onClose }: RouteNavigatio
         )}
 
         {/* 滞在時間 */}
-        {currentPoint.visit_duration && currentPoint.visit_duration > 0 && (
+        {currentPoint.visit_duration !== undefined && currentPoint.visit_duration > 0 && (
           <div className="bg-purple-50 rounded-lg p-3 mb-4">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">滞在時間:</span>
